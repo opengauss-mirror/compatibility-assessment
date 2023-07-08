@@ -1,4 +1,4 @@
-# compatibility-assessment
+# compatibility-org.opengauss.assessment
 
 #### Description
 openGauss兼容性评估工具
