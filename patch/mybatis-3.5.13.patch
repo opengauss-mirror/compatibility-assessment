@@ -1,0 +1,96 @@
+diff -Naur a/pom.xml b/pom.xml
+--- a/pom.xml	2023-07-21 14:59:18.385889393 +0800
++++ b/pom.xml	2023-07-21 16:08:12.639331090 +0800
+@@ -26,7 +26,7 @@
+     <relativePath />
+   </parent>
+ 
+-  <artifactId>mybatis</artifactId>
++  <artifactId>mybatis-sql-extract</artifactId>
+   <version>3.5.13</version>
+   <packaging>jar</packaging>
+ 
+diff -Naur a/src/main/java/org/apache/ibatis/builder/BaseBuilder.java b/src/main/java/org/apache/ibatis/builder/BaseBuilder.java
+--- a/src/main/java/org/apache/ibatis/builder/BaseBuilder.java	2023-07-21 14:59:18.353889065 +0800
++++ b/src/main/java/org/apache/ibatis/builder/BaseBuilder.java	2023-07-21 16:05:26.636635397 +0800
+@@ -115,7 +115,7 @@
+     try {
+       return resolveAlias(alias);
+     } catch (Exception e) {
+-      throw new BuilderException("Error resolving class. Cause: " + e, e);
++      return null; 
+     }
+   }
+ 
+diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java
+--- a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 14:59:18.356889096 +0800
++++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 12:01:22.000000000 +0800
+@@ -40,6 +40,7 @@
+       return text;
+     }
+     char[] src = text.toCharArray();
++    int order = 1;
+     int offset = 0;
+     final StringBuilder builder = new StringBuilder();
+     StringBuilder expression = null;
+@@ -73,7 +74,9 @@
+           builder.append(src, start, src.length - start);
+           offset = src.length;
+         } else {
+-          builder.append(handler.handleToken(expression.toString()));
++          handler.handleToken(expression.toString());
++          builder.append("$" + order);
++          order++;
+           offset = end + closeToken.length();
+         }
+       }
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-07-21 14:34:20.000000000 +0800
+@@ -15,8 +15,9 @@
+  */
+ package org.apache.ibatis.scripting.xmltags;
+ 
++import java.util.ArrayList;
++import java.util.Iterator;
+ import java.util.Map;
+-import java.util.Optional;
+ 
+ import org.apache.ibatis.parsing.GenericTokenParser;
+ import org.apache.ibatis.session.Configuration;
+@@ -68,15 +69,16 @@
+   @Override
+   public boolean apply(DynamicContext context) {
+     Map<String, Object> bindings = context.getBindings();
+-    final Iterable<?> iterable = evaluator.evaluateIterable(collectionExpression, bindings,
+-        Optional.ofNullable(nullable).orElseGet(configuration::isNullableOnForEach));
+-    if (iterable == null || !iterable.iterator().hasNext()) {
++    ArrayList<Object> al = new ArrayList<Object>();
++    al.add(new Object());
++    if (!al.iterator().hasNext()) {
+       return true;
+     }
+     boolean first = true;
+     applyOpen(context);
+     int i = 0;
+-    for (Object o : iterable) {
++    for (Iterator it = al.iterator(); it.hasNext(); ++i) {
++      Object o = it.next();
+       DynamicContext oldContext = context;
+       if (first || separator == null) {
+         context = new PrefixedContext(context, "");
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:34:20.000000000 +0800
+@@ -31,10 +31,7 @@
+ 
+   @Override
+   public boolean apply(DynamicContext context) {
+-    if (evaluator.evaluateBoolean(test, context.getBindings())) {
+-      contents.apply(context);
+-      return true;
+-    }
++    contents.apply(context);
+     return false;
+   }
+ 
