@@ -282,7 +282,7 @@ public class AssessmentEntry {
             LOGGER.error(pset.getProname() + ": The output file must be specific");
         } else {
             File outputFd = new File(assessmentSettings.getOutputFile());
-            File parent = new File(outputFd.getParent());
+            File parent = new File(outputFd.getAbsoluteFile().getParent());
             try {
                 if (!FilesOperation.isCreateOutputFile(outputFd, parent.getCanonicalPath())) {
                     LOGGER.warn(pset.getProname() + ": create report file failed, it may already exists! outputFile :"
