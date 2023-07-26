@@ -28,27 +28,23 @@ import java.io.IOException;
 import java.util.regex.Pattern;
 
 /**
- * Description: parse sql statement from general log
+ * Description: parse sql statement from slow log
  *
  * @author jianghongbo
  * @since 2023/6/30
  */
-public class GeneralLogParser extends FileInputSqlParser {
-    private static final Logger LOGGER = LoggerFactory.getLogger(GeneralLogParser.class);
-    private static final String REGIX_PATTERN = RegixInfoManager.getGenlogRegix();
+public class SlowLogParser extends FileInputSqlParser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SlowLogParser.class);
+    private static final String REGIX_PATTERN = RegixInfoManager.getSlowlogRegix();
     private static final Pattern PATTERN = Pattern.compile(REGIX_PATTERN);
-    private static final Integer IDCOMMAND_INDEX = 1;
-    private static final Integer ARGUMENT_INDEX = 2;
-    private static final Integer COMMAND_SUBINDEX = 1;
-    private static final Integer IDCOMMAND_COL_NUM = 2;
-    private static final String COMMAND_QUERY = "Query";
+    private static final String SET_TIMESTAMP = "SET timestamp";
 
     private File file;
 
     /**
      * Constructor
      */
-    public GeneralLogParser() {
+    public SlowLogParser() {
     }
 
     /**
@@ -56,7 +52,7 @@ public class GeneralLogParser extends FileInputSqlParser {
      *
      * @param file File
      */
-    public GeneralLogParser(File file) {
+    public SlowLogParser(File file) {
         this.file = file;
     }
 
@@ -69,39 +65,32 @@ public class GeneralLogParser extends FileInputSqlParser {
     }
 
     /**
-     * parse sql from single general log file
+     * parse sql from single slow log file
      */
     public void parseSql() {
         if (this.file == null) {
-            LOGGER.error("generallogParser: file is null");
+            LOGGER.error("slowlogParser: file is null");
             return;
         }
-        parseSql(this.file);
+        parseSql(file);
     }
 
     /**
-     * parse sql from file
+     * parse sql by file
      *
      * @param file File
      */
     protected void parseSql(File file) {
         String line;
-        String completeSql = "";
         StringBuilder builder = new StringBuilder();
-        File newFile = getOutputFile(file, outputDir);
+        File newFile = getOutputFile(file, outputDir, FileInputSqlParser.SLOW_CODE);
         if (!FilesOperation.isCreateOutputFile(newFile, outputDir)) {
             LOGGER.warn("create outputFile failed, it may already exists! inputfile: " + file.getAbsolutePath());
         }
         try (BufferedReader bufReader = FilesOperation.getBufferedReader(file);
              BufferedWriter bufWriter = FilesOperation.getBufferedWriter(newFile, false)) {
             while ((line = bufReader.readLine()) != null) {
-                if (isNewRecordLine(line)) {
-                    completeSql = writeAndUpdateSql(line, completeSql, builder);
-                } else {
-                    if (!("".equals(completeSql))) {
-                        completeSql = completeSql.trim() + " " + line;
-                    }
-                }
+                readBeforeSql(line, bufReader, builder);
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
@@ -109,26 +98,35 @@ public class GeneralLogParser extends FileInputSqlParser {
         }
     }
 
-    private String writeAndUpdateSql(String line, final String sql, StringBuilder builder) {
-        String completeSql = sql;
-        String[] lineElems = line.split("\t");
-        String commandType = lineElems[IDCOMMAND_INDEX].trim().split(" ", IDCOMMAND_COL_NUM)[COMMAND_SUBINDEX];
-        if (commandType.equals(COMMAND_QUERY)) {
-            if (!("".equals(completeSql))) {
-                if (SqlParseController.isNeedFormat(completeSql)) {
-                    completeSql = SqlParseController.format(completeSql);
-                    builder.append(completeSql);
-                } else {
-                    builder.append(completeSql.replaceAll(SqlParseController.REPLACEBLANK, " ")
-                            + ";" + System.lineSeparator());
+    private void readBeforeSql(String record, BufferedReader bufReader, StringBuilder builder) throws IOException {
+        String line = record;
+        if (isNewRecord(line)) {
+            while ((line = bufReader.readLine()) != null) {
+                if (line.startsWith(SET_TIMESTAMP)) {
+                    break;
                 }
             }
-            completeSql = lineElems[ARGUMENT_INDEX];
+            readCompleteSql(bufReader, builder);
         }
-        return completeSql;
     }
 
-    private static boolean isNewRecordLine(String line) {
+    private void readCompleteSql(BufferedReader bufReader, StringBuilder builder) throws IOException {
+        String sql = "";
+        String line;
+        while ((line = bufReader.readLine()) != null) {
+            sql = (sql == "") ? line : (sql.trim() + " " + line);
+            if (line.endsWith(";")) {
+                if (SqlParseController.isNeedFormat(sql)) {
+                    builder.append(SqlParseController.format(sql));
+                } else {
+                    builder.append(sql.replaceAll(SqlParseController.REPLACEBLANK, " ") + System.lineSeparator());
+                }
+                break;
+            }
+        }
+    }
+
+    private boolean isNewRecord(String line) {
         return PATTERN.matcher(line).find();
     }
 }
