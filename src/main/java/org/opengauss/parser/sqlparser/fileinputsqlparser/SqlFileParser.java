@@ -75,7 +75,7 @@ public class SqlFileParser extends FileInputSqlParser {
     protected void parseSql(File file) {
         String line = "";
         StringBuilder builder = new StringBuilder();
-        File newFile = getOutputFile(file, outputDir);
+        File newFile = getOutputFile(file, outputDir, FileInputSqlParser.SQL_CODE);
         if (!FilesOperation.isCreateOutputFile(newFile, outputDir)) {
             LOGGER.warn("create outputFile failed, it may already exists! inputfile: " + file.getAbsolutePath());
         }

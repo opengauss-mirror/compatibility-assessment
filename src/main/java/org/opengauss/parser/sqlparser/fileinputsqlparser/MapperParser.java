@@ -89,7 +89,7 @@ public class MapperParser extends FileInputSqlParser {
      * @param file File
      */
     protected void parseSql(File file) {
-        File newFile = getOutputFile(file, outputDir);
+        File newFile = getOutputFile(file, outputDir, FileInputSqlParser.MAPPER_CODE);
         StringBuilder builder = new StringBuilder();
         if (!FilesOperation.isCreateOutputFile(newFile, outputDir)) {
             LOGGER.warn("create outputFile failed, it may already exists! inputfile: " + file.getName());
