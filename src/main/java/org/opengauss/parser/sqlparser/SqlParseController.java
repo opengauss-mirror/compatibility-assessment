@@ -32,6 +32,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -53,6 +54,7 @@ public class SqlParseController {
     private static final String DELIMITER = "delimiter";
     private static final String SEMI = ";";
     private static final String SLASH = "//";
+    private static final List<File> DEFAULT_FILE_LIST = new ArrayList<>();
 
     private SqlParser sqlParser = null;
 
@@ -122,10 +124,11 @@ public class SqlParseController {
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
             String dataDir = assessmentInfo.getProperty(AssessmentInfoChecker.FILEDIR);
             Map<String, List<File>> filesMap = fileDistributer.distributeFiles(dataDir);
-            sqlParser = new FilesSqlParser(filesMap.get(SingleFileHandler.SQLFILE_EXTENSION),
-                    filesMap.get(SingleFileHandler.GENERALLOG_EXTENSION),
-                    filesMap.get(SingleFileHandler.SLOWLOG_EXTENSION),
-                    filesMap.get(SingleFileHandler.MAPPER_EXTENSION));
+            sqlParser = new FilesSqlParser(
+                    filesMap.getOrDefault(SingleFileHandler.SQLFILE_EXTENSION, DEFAULT_FILE_LIST),
+                    filesMap.getOrDefault(SingleFileHandler.GENERALLOG_EXTENSION, DEFAULT_FILE_LIST),
+                    filesMap.getOrDefault(SingleFileHandler.SLOWLOG_EXTENSION, DEFAULT_FILE_LIST),
+                    filesMap.getOrDefault(SingleFileHandler.MAPPER_EXTENSION, DEFAULT_FILE_LIST));
         } else {
             String assessmentType = assessmentInfo.getProperty(AssessmentInfoChecker.ASSESSMENTTYPE);
             if (assessmentType.equalsIgnoreCase(AssessmentInfoChecker.ASSESSMENT_OBJECT)) {

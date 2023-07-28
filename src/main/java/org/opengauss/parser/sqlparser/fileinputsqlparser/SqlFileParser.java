@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.BufferedWriter;
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Description: parse sql statement from sql file
@@ -39,15 +38,15 @@ public class SqlFileParser extends FileInputSqlParser {
     public static final String SQLFILE_SUFFIX = ".sql";
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlFileParser.class);
 
-    private List<File> files;
+    private File file;
 
     /**
      * Constructor
      *
-     * @param files List<File>
+     * @param file File
      */
-    public SqlFileParser(List<File> files) {
-        this.files = files;
+    public SqlFileParser(File file) {
+        this.file = file;
     }
 
     /**
@@ -62,9 +61,11 @@ public class SqlFileParser extends FileInputSqlParser {
      * parse sql from all sql files in dataDir
      */
     public void parseSql() {
-        for (File file : files) {
-            parseSql(file);
+        if (this.file == null) {
+            LOGGER.error("sqlFileParser: file is null");
+            return;
         }
+        parseSql(file);
     }
 
     /**
