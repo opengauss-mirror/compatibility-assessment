@@ -35,7 +35,7 @@ public class FilesSqlParser implements SqlParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(FilesSqlParser.class);
     private static final int MAX_THREAD_NUM = 20;
 
-    private SqlFileParser sqlFileParser;
+    private List<File> sqlfiles;
     private List<File> generallogs;
     private List<File> slowlogs;
     private List<File> mappers;
@@ -51,13 +51,11 @@ public class FilesSqlParser implements SqlParser {
      * @param mappers List<File>
      */
     public FilesSqlParser(List<File> sqlfiles, List<File> generallogs, List<File> slowlogs, List<File> mappers) {
-        sqlFileParser = new SqlFileParser(sqlfiles);
+        this.sqlfiles = sqlfiles;
         this.generallogs = generallogs;
         this.slowlogs = slowlogs;
         this.mappers = mappers;
-        int poolSize = Math.min(generallogs.size() + slowlogs.size() + mappers.size(), MAX_THREAD_NUM);
-        poolExecutor = new ThreadPoolExecutor(poolSize, poolSize,
-                0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        initThreadPool();
     }
 
     /**
@@ -65,7 +63,9 @@ public class FilesSqlParser implements SqlParser {
      */
     @Override
     public void parseSql() {
-        sqlFileParser.parseSql();
+        for (File sqlfile : sqlfiles) {
+            poolExecutor.execute(new SqlFileParser(sqlfile));
+        }
         for (File generalLog : generallogs) {
             poolExecutor.execute(new GeneralLogParser(generalLog));
         }
@@ -76,5 +76,11 @@ public class FilesSqlParser implements SqlParser {
             poolExecutor.execute(new MapperParser(mapper));
         }
         poolExecutor.shutdown();
+    }
+
+    private void initThreadPool() {
+        int poolSize = generallogs.size() + slowlogs.size() + mappers.size() + sqlfiles.size();
+        poolExecutor = new ThreadPoolExecutor(Math.min(poolSize + 1, MAX_THREAD_NUM), MAX_THREAD_NUM,
+                0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     }
 }

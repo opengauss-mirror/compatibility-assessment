@@ -77,7 +77,7 @@ public class MapperParser extends FileInputSqlParser {
      */
     public void parseSql() {
         if (this.file == null) {
-            LOGGER.error("slowlogParser: file is null");
+            LOGGER.error("mapperParser: file is null");
             return;
         }
         parseSql(file);
