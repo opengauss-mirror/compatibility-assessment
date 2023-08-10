@@ -26,18 +26,35 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @since 2023/6/30
  */
 public class FileLocks {
+    /**
+     * synchronization lock
+     */
+    public static final Object lockersSync = new Object();
     private static Map<String, ReentrantReadWriteLock> lockers = new ConcurrentHashMap<>();
 
     /**
-     * add file lock to map
+     * lock the file and add file lock to map,
+     * avoiding assessment thread read file before write.
      *
      * @param filename String
      * @return ReentrantReadWriteLock
      */
-    public static ReentrantReadWriteLock addLocker(String filename) {
+    public static ReentrantReadWriteLock addLockerAndLockFile(String filename) {
         ReentrantReadWriteLock locker = new ReentrantReadWriteLock();
-        lockers.put(filename, locker);
+        synchronized (lockersSync) {
+            lockers.put(filename, locker);
+            locker.writeLock().lock();
+        }
         return locker;
+    }
+
+    /**
+     * add file lock to map.
+     *
+     * @param filename String
+     */
+    public static void addLocker(String filename) {
+        lockers.put(filename, new ReentrantReadWriteLock());
     }
 
     /**

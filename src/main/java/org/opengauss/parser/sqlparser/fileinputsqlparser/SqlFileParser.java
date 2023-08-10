@@ -87,7 +87,8 @@ public class SqlFileParser extends FileInputSqlParser {
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
-            LOGGER.error("parsing sql file occur IOException. inputFile: " + file.getName());
+            handleFileLockWhenExp(newFile.getName());
+            LOGGER.error("parsing sql file occur IOException. file: " + file.getName());
         }
     }
 }
