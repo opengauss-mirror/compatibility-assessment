@@ -223,22 +223,21 @@ public class AssessmentEntry {
         buffer.delete(0, buffer.length());
         String[] sqlArr;
         List<String> delimiters = new ArrayList<>();
-        String delimiterRegex = "delimiter(\\s+)//|delimiter(\\s+);";
+        String delimiterRegex = "(delimiter|DELIMITER)(\\s+)//|(delimiter|DELIMITER)(\\s+);";
         Matcher matcher = Pattern.compile(delimiterRegex).matcher(sqlStr);
         String filterQuotes = "(?=(?:[^\"\']*[\"\'][^\"\']*[\"\'])*[^\"\']*$)";
         while (matcher.find()) {
             delimiters.add(matcher.group());
         }
         if (!delimiters.isEmpty()) {
-            splitSQLFileWithDelimiter(allSql, sqlStr, delimiters, filterQuotes);
+            splitSQLFileWithDelimiter(allSql, sqlStr, delimiters, filterQuotes, delimiterRegex);
         } else {
             sqlArr = sqlStr.split(";" + filterQuotes);
             int line = 1;
             for (String sql : sqlArr) {
                 sql = sql.trim();
                 if (!sql.equals("")) {
-                    line++;
-                    allSql.offer(new ScanSingleSql(sql, line));
+                    allSql.offer(new ScanSingleSql(sql, line++));
                 }
             }
         }
@@ -247,17 +246,18 @@ public class AssessmentEntry {
     /**
      * Split sql file.
      *
-     * @param allSql       : store sql.
-     * @param sqlStr       : sql string.
-     * @param delimiters   : delimiter sql.
-     * @param filterQuotes : filter quotes regex.
+     * @param allSql         : store sql.
+     * @param sqlStr         : sql string.
+     * @param delimiters     : delimiter sql.
+     * @param filterQuotes   : filter quotes regex.
+     * @param delimiterRegex : delimiter regex
      */
     private static void splitSQLFileWithDelimiter(Queue<ScanSingleSql> allSql, String sqlStr, List<String> delimiters,
-                                                  String filterQuotes) {
+                                                  String filterQuotes, String delimiterRegex) {
         String[] sqlArr;
         String separator = ";";
         int line = 1;
-        String[] sqlStrs = sqlStr.split("delimiter(\\s+)//|delimiter(\\s+);");
+        String[] sqlStrs = sqlStr.split(delimiterRegex);
         for (int i = 0; i < sqlStrs.length; i++) {
             sqlArr = sqlStrs[i].split(separator + filterQuotes);
             for (String sql : sqlArr) {
@@ -269,7 +269,7 @@ public class AssessmentEntry {
 
             if (i < delimiters.size()) {
                 String delimiter = delimiters.get(i);
-                separator = delimiter.replace("delimiter", "").trim();
+                separator = delimiter.replace("delimiter", "").replace("DELIMITER", "").trim();
             }
         }
     }
