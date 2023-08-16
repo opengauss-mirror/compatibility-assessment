@@ -111,11 +111,9 @@ public class SqlParseController {
      */
     public static void writeSqlToFile(String filename, BufferedWriter bufWriter, StringBuilder builder)
             throws IOException {
-        ReentrantReadWriteLock locker = FileLocks.addLocker(filename);
-        ReentrantReadWriteLock.WriteLock writeLocker = locker.writeLock();
-        writeLocker.lock();
+        ReentrantReadWriteLock locker = FileLocks.addLockerAndLockFile(filename);
         bufWriter.write(builder.toString());
-        writeLocker.unlock();
+        locker.writeLock().unlock();
     }
 
     private void initSqlParser() {

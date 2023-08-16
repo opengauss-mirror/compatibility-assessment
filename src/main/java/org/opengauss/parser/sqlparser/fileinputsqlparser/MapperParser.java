@@ -15,6 +15,7 @@
 
 package org.opengauss.parser.sqlparser.fileinputsqlparser;
 
+import org.apache.ibatis.builder.BuilderException;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.mapping.BoundSql;
 import org.apache.ibatis.mapping.MappedStatement;
@@ -119,8 +120,10 @@ public class MapperParser extends FileInputSqlParser {
                 }
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
-        } catch (IOException exp) {
-            LOGGER.warn("create mapper file inputstream occuer IOException.", exp);
+        } catch (IOException | BuilderException exp) {
+            handleFileLockWhenExp(newFile.getName());
+            LOGGER.warn("create mapper file inputstream occuer IOException or BuilderException. filename: "
+                    + file.getName(), exp);
         }
     }
 }

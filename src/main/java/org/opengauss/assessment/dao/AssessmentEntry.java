@@ -159,7 +159,10 @@ public class AssessmentEntry {
             String fileName = inputPath.getFileName().toString();
             Map<String, ReentrantReadWriteLock> lockers = FileLocks.getLockers();
             if (lockers.containsKey(fileName)) {
-                ReentrantReadWriteLock.ReadLock readLock = lockers.get(fileName).readLock();
+                ReentrantReadWriteLock.ReadLock readLock;
+                synchronized (FileLocks.lockersSync) {
+                    readLock = lockers.get(fileName).readLock();
+                }
                 lockers.remove(fileName);
                 fileCount.getAndIncrement();
                 readLock.lock();

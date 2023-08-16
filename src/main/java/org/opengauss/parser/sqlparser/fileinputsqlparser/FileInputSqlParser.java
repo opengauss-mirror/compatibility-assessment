@@ -16,6 +16,7 @@
 package org.opengauss.parser.sqlparser.fileinputsqlparser;
 
 import org.apache.commons.io.FilenameUtils;
+import org.opengauss.parser.FileLocks;
 import org.opengauss.parser.configure.AssessmentInfoManager;
 import org.opengauss.parser.sqlparser.SqlParser;
 import org.slf4j.Logger;
@@ -101,5 +102,18 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
             LOGGER.error("create outputfile file occur IOException, inputFile: %s", inputFile.getName());
         }
         return newFile;
+    }
+
+    /**
+     * handle file lock if exception occured when parsing.
+     *
+     * @param filename String
+     */
+    protected void handleFileLockWhenExp(String filename) {
+        if (!FileLocks.getLockers().containsKey(filename)) {
+            FileLocks.addLocker(filename);
+        } else {
+            FileLocks.getLockers().get(filename).writeLock().unlock();
+        }
     }
 }
