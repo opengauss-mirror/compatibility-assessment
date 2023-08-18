@@ -322,14 +322,16 @@ public class AssessmentEntry {
      *
      * @param allSql             : store sql.
      * @param compatibilityTable : record assessment information.
-     * @param connection         : jdbc connextion.
+     * @param connection         : jdbc connection.
      */
     private static void gramTestHelper(Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
                                        Connection connection) {
         ScanSingleSql scanSingleSql = allSql.poll();
-        String str = scanSingleSql.getSql();
+        String sql = scanSingleSql.getSql();
+        String str = translateExplainTblnameSql(sql);
         boolean hasGramTest = true;
         CompatibilityType compatibilityType = UNSUPPORTED_COMPATIBLE;
+        String errorResult = "";
         if (assessmentSettings.isPlugin()) {
             String querySql = "ast " + str;
             try (PreparedStatement statement = connection.prepareStatement(querySql)) {
@@ -337,12 +339,12 @@ public class AssessmentEntry {
             } catch (SQLException e) {
                 commit(connection);
                 compatibilityType = INCOMPATIBLE;
+                errorResult = e.getMessage();
                 hasGramTest = false;
             }
         }
 
         AssessmentType assessmentType = UNSUPPORTED;
-        String errorResult = "";
         if (hasGramTest) {
             try {
                 assessmentType = getAssessmentType(connection, str);
@@ -352,7 +354,9 @@ public class AssessmentEntry {
                 errorResult = e.getMessage();
             }
 
-            if (assessmentType == DDL || assessmentType == EXPLAIN || assessmentType == DML) {
+            if (assessmentType == COMMENT) {
+                compatibilityType = SKIP_COMMAND;
+            } else {
                 try (PreparedStatement statement = connection.prepareStatement(str)) {
                     statement.execute();
                     compatibilityType = COMPATIBLE;
@@ -361,14 +365,27 @@ public class AssessmentEntry {
                     compatibilityType = AST_COMPATIBLE;
                     errorResult = e.getMessage();
                 }
-            } else if (assessmentType == COMMENT) {
-                compatibilityType = SKIP_COMMAND;
-            } else {
-                compatibilityType = UNSUPPORTED_COMPATIBLE;
             }
         }
 
-        compatibilityTable.appendOneSQL(scanSingleSql.getLine(), str, assessmentType, compatibilityType, errorResult);
+        compatibilityTable.appendOneSQL(scanSingleSql.getLine(), sql, assessmentType, compatibilityType, errorResult);
+    }
+
+    /**
+     * translate explain tblname sql.
+     *
+     * @param sql : explain tblname sql
+     * @return String
+     */
+    private static String translateExplainTblnameSql(String sql) {
+        String str = sql;
+        if (str.contains("explain")) {
+            String[] strings = str.split(" ");
+            if (strings.length == 2) {
+                str = str.replace("explain", "desc");
+            }
+        }
+        return str;
     }
 
     /**
