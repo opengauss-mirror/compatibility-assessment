@@ -17,6 +17,8 @@ package org.opengauss.assessment.utils;
 
 import org.opengauss.parser.configure.AssessmentInfoChecker;
 import org.opengauss.parser.configure.AssessmentInfoManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -29,6 +31,8 @@ import java.sql.SQLException;
  * @since : 2023/7/7
  */
 public class ConnectionUtils {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionUtils.class);
+
     /**
      * Get jdbc connection.
      *
@@ -50,23 +54,8 @@ public class ConnectionUtils {
         try {
             connection = DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.error("jdbc connect failed!");
         }
         return connection;
-    }
-
-    /**
-     * Close jdbc connection.
-     *
-     * @param connection : jdbc connection
-     */
-    public static void closeConnection(Connection connection) {
-        try {
-            if (connection != null) {
-                connection.close();
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 }
