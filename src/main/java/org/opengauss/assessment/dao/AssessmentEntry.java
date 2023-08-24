@@ -45,9 +45,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static org.opengauss.assessment.dao.AssessmentType.DDL;
-import static org.opengauss.assessment.dao.AssessmentType.DML;
-import static org.opengauss.assessment.dao.AssessmentType.EXPLAIN;
 import static org.opengauss.assessment.dao.AssessmentType.UNSUPPORTED;
 import static org.opengauss.assessment.dao.AssessmentType.COMMENT;
 import static org.opengauss.assessment.dao.CompatibilityType.COMPATIBLE;
@@ -56,7 +53,6 @@ import static org.opengauss.assessment.dao.CompatibilityType.AST_COMPATIBLE;
 import static org.opengauss.assessment.dao.CompatibilityType.UNSUPPORTED_COMPATIBLE;
 import static org.opengauss.assessment.dao.CompatibilityType.INCOMPATIBLE;
 import static org.opengauss.assessment.utils.ConnectionUtils.getConnection;
-import static org.opengauss.assessment.utils.ConnectionUtils.closeConnection;
 import static org.opengauss.assessment.utils.JSchConnectionUtils.getJSchConnect;
 
 /**
@@ -105,20 +101,21 @@ public class AssessmentEntry {
             try (PreparedStatement statement = connection.prepareStatement("set client_min_messages=error")) {
                 statement.execute();
             }
+
+            CompatibilityTable compatibilityTable = new CompatibilityTable();
+            if (!compatibilityTable.generateReportHeader(assessmentSettings.getOutputFile(),
+                    dbCompatArray[globalDatabaseType].getName())) {
+                LOGGER.error(pset.getProname() + ": can not write to file \"" + assessmentSettings.getOutputFile() + "\"");
+            }
+
+            setAutoCommit(connection);
+            sqlAssessment(compatibilityTable, connection);
+
+            if (!compatibilityTable.generateReportEnd()) {
+                LOGGER.error(assessmentSettings.getOutputFile() + ": can not write to file \"" + pset.getProname() + "\"");
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        CompatibilityTable compatibilityTable = new CompatibilityTable();
-        if (!compatibilityTable.generateReportHeader(assessmentSettings.getOutputFile(),
-                dbCompatArray[globalDatabaseType].getName())) {
-            LOGGER.error(pset.getProname() + ": can not write to file \"" + assessmentSettings.getOutputFile() + "\"");
-        }
-
-        sqlAssessment(compatibilityTable);
-
-        if (!compatibilityTable.generateReportEnd()) {
-            LOGGER.error(assessmentSettings.getOutputFile() + ": can not write to file \"" + pset.getProname() + "\"");
+            LOGGER.error("sql assessment occur SQLException! exception = " + e.getMessage());
         }
 
         if (assessmentSettings.getDatabase() >= 0 && LOGGER.isInfoEnabled()) {
@@ -132,13 +129,13 @@ public class AssessmentEntry {
      *
      * @param compatibilityTable : record assessment information.
      */
-    private void sqlAssessment(CompatibilityTable compatibilityTable) {
+    private void sqlAssessment(CompatibilityTable compatibilityTable, Connection connection) {
         Path path = Paths.get(assessmentSettings.getInputDir());
         AtomicInteger fileCount = new AtomicInteger(0);
         while (fileCount.intValue() < OUTPUT_SQL_FILE_COUNT) {
             if (Files.exists(path) && Files.isDirectory(path)) {
                 try (Stream<Path> files = Files.list(path)) {
-                    sqlAssessmentHelper(compatibilityTable, fileCount, files);
+                    sqlAssessmentHelper(compatibilityTable, fileCount, files, connection);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -154,7 +151,7 @@ public class AssessmentEntry {
      * @param files              : file stream.
      */
     private void sqlAssessmentHelper(CompatibilityTable compatibilityTable, AtomicInteger fileCount,
-                                     Stream<Path> files) {
+                                     Stream<Path> files, Connection connection) {
         files.parallel().forEachOrdered(inputPath -> {
             String fileName = inputPath.getFileName().toString();
             Map<String, ReentrantReadWriteLock> lockers = FileLocks.getLockers();
@@ -169,7 +166,7 @@ public class AssessmentEntry {
                 try {
                     Queue<ScanSingleSql> allSql = splitSQLFile(inputPath);
                     int sqlSize = allSql.size();
-                    gramTest(sqlSize, allSql, compatibilityTable);
+                    gramTest(sqlSize, allSql, compatibilityTable, connection);
                     if (!compatibilityTable.generateSQLCompatibilityStatistic(fileName)) {
                         LOGGER.error(assessmentSettings.getOutputFile() + "%s: can not write to file \""
                                 + pset.getProname() + "\"");
@@ -304,9 +301,8 @@ public class AssessmentEntry {
      * @param allSql             : store sql.
      * @param compatibilityTable : record assessment information.
      */
-    private void gramTest(int sqlSize, Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable) {
-        Connection connection = getConnection(assessmentSettings.getDbname());
-        setAutoCommit(connection);
+    private void gramTest(int sqlSize, Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
+                          Connection connection) {
         long index = 0L;
         while (!allSql.isEmpty()) {
             gramTestHelper(allSql, compatibilityTable, connection);
@@ -314,7 +310,6 @@ public class AssessmentEntry {
         }
 
         printProcess(sqlSize, index);
-        closeConnection(connection);
     }
 
     /**
@@ -516,7 +511,7 @@ public class AssessmentEntry {
                 statement.execute();
                 assessmentSettings.setDbname(dbname);
                 if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info(pset.getProname() + ": create database \" + dbname +\" automatically.");
+                    LOGGER.info(pset.getProname() + ": create database " + dbname + " automatically.");
                 }
             }
         } catch (SQLException e) {
@@ -690,6 +685,6 @@ public class AssessmentEntry {
      */
     private void initPSqlSettings() {
         pset.setDbname(null);
-        pset.setProname("assessment_database");
+        pset.setProname("gs_assessment");
     }
 }
