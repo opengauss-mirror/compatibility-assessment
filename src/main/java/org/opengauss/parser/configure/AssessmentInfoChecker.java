@@ -20,6 +20,7 @@ import org.opengauss.parser.exception.SqlParseExceptionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -188,10 +189,17 @@ public class AssessmentInfoChecker {
 
     private static void checkDatafromFile(Properties props) {
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
-            if (props.getProperty(FILEDIR) == null || props.getProperty(FILEDIR).length() == 0) {
+            String fileDir = props.getProperty(FILEDIR);
+            if (fileDir == null || fileDir.length() == 0) {
                 LOGGER.error("filedir is wrong value, please check configure file.");
                 throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.CONFIGUREEXCEPTION_CODE,
                         "filedir is wrong value, please check configure file.");
+            }
+            File file = new File(fileDir);
+            if (!file.exists() || !file.isDirectory()) {
+                LOGGER.error("filedir does not exists or not a dictionary.");
+                throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.CONFIGUREEXCEPTION_CODE,
+                        "filedir does not exists or not a dictionary.");
             }
         }
     }

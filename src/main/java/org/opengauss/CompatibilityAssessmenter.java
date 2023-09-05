@@ -73,7 +73,7 @@ public class CompatibilityAssessmenter {
         try {
             future.get();
         } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error("sqlParsing thread occur Exception, exit. exception = " + e.getMessage());
+            LOGGER.error("sqlParsing thread occur Exception, exit. exception ", e);
             threadPoolExecutor.shutdownNow();
         }
     }
@@ -85,7 +85,7 @@ public class CompatibilityAssessmenter {
         try {
             future.get();
         } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error("sqlPAssessment thread occur Exception, exit. exception = " + e.getMessage());
+            LOGGER.error("sqlPAssessment thread occur Exception, exit. exception ", e);
             threadPoolExecutor.shutdownNow();
         }
 
