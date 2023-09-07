@@ -73,7 +73,7 @@ public class AssessmentEntry {
             new DBCompatibilityAttr(DB_CMPT_C, "C"),
             new DBCompatibilityAttr(DB_CMPT_PG, "PG")};
     private static String[] dbPlugins = {"whale", "dolphin", null, null};
-    private static final int MAX_RETRY_COUNT = 5000;
+    private static final int MAX_RETRY_COUNT = 50000;
     private static int globalDatabaseType = -1;
     private static final int OUTPUT_SQL_FILE_COUNT = AssessmentInfoManager.getInstance().getOutputSqlFileCount();
     private static final Logger LOGGER = LoggerFactory.getLogger(AssessmentEntry.class);
@@ -196,12 +196,57 @@ public class AssessmentEntry {
     private Queue<ScanSingleSql> splitSQLFile(Path path) {
         Queue<ScanSingleSql> allSql = new LinkedList<>();
         try (BufferedReader bufferedReader = Files.newBufferedReader(path)) {
-            splitSQLFileHelper(allSql, bufferedReader);
+            splitSQLFileHelper2(allSql, bufferedReader);
         } catch (IOException e) {
             return allSql;
         }
 
         return allSql;
+    }
+
+    /**
+     * Split sql file.
+     *
+     * @param allSql         : store sql.
+     * @param bufferedReader : bufferReader
+     * @throws IOException : throw IOException
+     */
+    private static void splitSQLFileHelper2(Queue<ScanSingleSql> allSql, BufferedReader bufferedReader)
+            throws IOException {
+        String sqlLine;
+        String delimiter = ";";
+        String sql = "";
+        boolean is_delimiter = false;
+        int line = 1;
+        while ((sqlLine = bufferedReader.readLine()) != null) {
+            sqlLine = sqlLine.trim();
+            if (sqlLine.startsWith("--")) {
+                allSql.offer(new ScanSingleSql(sqlLine, line++));
+                continue;
+            }
+
+            sql = sql.concat(sqlLine);
+            if (is_delimiter) {
+                if (!sqlLine.equals("")) {
+                    is_delimiter = false;
+                    delimiter = sqlLine.replace(delimiter, "").trim();
+                    sql = "";
+                }
+            } else if (sqlLine.startsWith("delimiter") || sqlLine.startsWith("DELIMITER")) {
+                if (sqlLine.equals("delimiter") || sqlLine.equals("DELIMITER"))
+                    is_delimiter = true;
+                else {
+                    delimiter = sqlLine.replace("delimiter", "").replace("DELIMITER", "").replace(delimiter, "").trim();
+                    sql = "";
+                }
+            } else if (!sqlLine.endsWith(delimiter)) {
+                sql = sql.concat(" ");
+            } else {
+                sql = sql.replace(delimiter, "").trim();
+                allSql.offer(new ScanSingleSql(sql, line++));
+                sql = "";
+            }
+        }
     }
 
     /**
@@ -225,7 +270,7 @@ public class AssessmentEntry {
         List<String> delimiters = new ArrayList<>();
         String delimiterRegex = "(delimiter|DELIMITER)(\\s+)//|(delimiter|DELIMITER)(\\s+);";
         Matcher matcher = Pattern.compile(delimiterRegex).matcher(sqlStr);
-        String filterQuotes = "(?=(?:[^\"\']*[\"\'][^\"\']*[\"\'])*[^\"\']*$)";
+        String filterQuotes = "(?=([^\"\']*[\"\'][^\"\']*[\"\'])*[^\"\']*$)";
         while (matcher.find()) {
             delimiters.add(matcher.group());
         }
