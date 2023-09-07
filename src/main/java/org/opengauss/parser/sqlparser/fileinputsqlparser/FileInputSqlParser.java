@@ -93,7 +93,8 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
     protected File getOutputFile(File inputFile, String outputDir, Integer fileTypeCode) {
         File newFile = null;
         try {
-            String fileName = inputFile.getName();
+            String fileName = inputFile.getCanonicalPath().substring(1)
+                    .replaceAll(File.separator, "_");
             String newFilename = outputDir + File.separator + fileName.replaceAll(DOTS
                     + FilenameUtils.getExtension(inputFile.getCanonicalPath()),
                     BAR + codeToExtension.get(fileTypeCode) + SqlFileParser.SQLFILE_SUFFIX);

@@ -12,19 +12,33 @@ diff -Naur a/pom.xml b/pom.xml
  
 diff -Naur a/src/main/java/org/apache/ibatis/builder/BaseBuilder.java b/src/main/java/org/apache/ibatis/builder/BaseBuilder.java
 --- a/src/main/java/org/apache/ibatis/builder/BaseBuilder.java	2023-07-21 14:59:18.353889065 +0800
-+++ b/src/main/java/org/apache/ibatis/builder/BaseBuilder.java	2023-07-21 16:05:26.636635397 +0800
++++ b/src/main/java/org/apache/ibatis/builder/BaseBuilder.java	2023-07-21 16:12:33.912917865 +0800
 @@ -115,7 +115,7 @@
      try {
        return resolveAlias(alias);
      } catch (Exception e) {
 -      throw new BuilderException("Error resolving class. Cause: " + e, e);
-+      return null; 
++      return null;
      }
    }
  
+diff -Naur a/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java b/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java
+--- a/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java	2023-07-21 14:59:18.353889065 +0800
++++ b/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java	2023-09-07 20:59:08.827285797 +0800
+@@ -118,10 +118,6 @@
+         throw new BuilderException("Mapper's namespace cannot be empty");
+       }
+       builderAssistant.setCurrentNamespace(namespace);
+-      cacheRefElement(context.evalNode("cache-ref"));
+-      cacheElement(context.evalNode("cache"));
+-      parameterMapElement(context.evalNodes("/mapper/parameterMap"));
+-      resultMapElements(context.evalNodes("/mapper/resultMap"));
+       sqlElement(context.evalNodes("/mapper/sql"));
+       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
+     } catch (Exception e) {
 diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java
 --- a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 14:59:18.356889096 +0800
-+++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 12:01:22.000000000 +0800
++++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-09-05 15:16:55.927442035 +0800
 @@ -40,6 +40,7 @@
        return text;
      }
@@ -33,14 +47,18 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
      int offset = 0;
      final StringBuilder builder = new StringBuilder();
      StringBuilder expression = null;
-@@ -73,7 +74,9 @@
+@@ -73,7 +74,13 @@
            builder.append(src, start, src.length - start);
            offset = src.length;
          } else {
 -          builder.append(handler.handleToken(expression.toString()));
 +          handler.handleToken(expression.toString());
-+          builder.append("$" + order);
-+          order++;
++	  if ("#{".equals(this.openToken)) {
++            builder.append("$" + order);
++            order++;
++          } else {
++            builder.append(expression);
++          }
            offset = end + closeToken.length();
          }
        }
@@ -81,8 +99,8 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
          context = new PrefixedContext(context, "");
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:34:20.000000000 +0800
-@@ -31,10 +31,7 @@
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-09-07 21:00:14.077940261 +0800
+@@ -31,11 +31,8 @@
  
    @Override
    public boolean apply(DynamicContext context) {
@@ -90,7 +108,9 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/
 -      contents.apply(context);
 -      return true;
 -    }
+-    return false;
 +    contents.apply(context);
-     return false;
++    return true;
    }
  
+ }
