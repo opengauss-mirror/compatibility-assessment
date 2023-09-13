@@ -22,20 +22,53 @@ diff -Naur a/src/main/java/org/apache/ibatis/builder/BaseBuilder.java b/src/main
      }
    }
  
+diff -Naur a/src/main/java/org/apache/ibatis/builder/MapperBuilderAssistant.java b/src/main/java/org/apache/ibatis/builder/MapperBuilderAssistant.java
+--- a/src/main/java/org/apache/ibatis/builder/MapperBuilderAssistant.java	2023-07-21 14:59:18.353889065 +0800
++++ b/src/main/java/org/apache/ibatis/builder/MapperBuilderAssistant.java	2023-09-13 17:38:05.127096977 +0800
+@@ -158,7 +158,7 @@
+ 
+     if (extend != null) {
+       if (!configuration.hasResultMap(extend)) {
+-        throw new IncompleteElementException("Could not find a parent resultmap with id '" + extend + "'");
++	return null;
+       }
+       ResultMap resultMap = configuration.getResultMap(extend);
+       List<ResultMapping> extendedResultMappings = new ArrayList<>(resultMap.getResultMappings());
+@@ -320,8 +320,7 @@
+         try {
+           resultMaps.add(configuration.getResultMap(resultMapName.trim()));
+         } catch (IllegalArgumentException e) {
+-          throw new IncompleteElementException(
+-              "Could not find result map '" + resultMapName + "' referenced from '" + statementId + "'", e);
++	    return resultMaps;
+         }
+       }
+     } else if (resultType != null) {
 diff -Naur a/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java b/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java
 --- a/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java	2023-07-21 14:59:18.353889065 +0800
-+++ b/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java	2023-09-07 20:59:08.827285797 +0800
-@@ -118,10 +118,6 @@
-         throw new BuilderException("Mapper's namespace cannot be empty");
-       }
-       builderAssistant.setCurrentNamespace(namespace);
--      cacheRefElement(context.evalNode("cache-ref"));
--      cacheElement(context.evalNode("cache"));
--      parameterMapElement(context.evalNodes("/mapper/parameterMap"));
--      resultMapElements(context.evalNodes("/mapper/resultMap"));
-       sqlElement(context.evalNodes("/mapper/sql"));
-       buildStatementFromContext(context.evalNodes("select|insert|update|delete"));
-     } catch (Exception e) {
++++ b/src/main/java/org/apache/ibatis/builder/xml/XMLMapperBuilder.java	2023-09-13 14:42:08.822962441 +0800
+@@ -389,8 +389,7 @@
+     String javaType = context.getStringAttribute("javaType");
+     String jdbcType = context.getStringAttribute("jdbcType");
+     String nestedSelect = context.getStringAttribute("select");
+-    String nestedResultMap = context.getStringAttribute("resultMap",
+-        () -> processNestedResultMappings(context, Collections.emptyList(), resultType));
++    String nestedResultMap = null;
+     String notNullColumn = context.getStringAttribute("notNullColumn");
+     String columnPrefix = context.getStringAttribute("columnPrefix");
+     String typeHandler = context.getStringAttribute("typeHandler");
+diff -Naur a/src/main/java/org/apache/ibatis/mapping/ResultMapping.java b/src/main/java/org/apache/ibatis/mapping/ResultMapping.java
+--- a/src/main/java/org/apache/ibatis/mapping/ResultMapping.java	2023-07-21 14:59:18.356889096 +0800
++++ b/src/main/java/org/apache/ibatis/mapping/ResultMapping.java	2023-09-13 14:42:58.505464359 +0800
+@@ -136,8 +136,6 @@
+       // lock down collections
+       resultMapping.flags = Collections.unmodifiableList(resultMapping.flags);
+       resultMapping.composites = Collections.unmodifiableList(resultMapping.composites);
+-      resolveTypeHandler();
+-      validate();
+       return resultMapping;
+     }
+ 
 diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java
 --- a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 14:59:18.356889096 +0800
 +++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-09-05 15:16:55.927442035 +0800
