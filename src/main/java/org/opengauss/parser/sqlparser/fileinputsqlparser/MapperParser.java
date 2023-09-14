@@ -123,7 +123,7 @@ public class MapperParser extends FileInputSqlParser {
         } catch (IOException | BuilderException exp) {
             handleFileLockWhenExp(newFile.getName());
             LOGGER.error("create mapper file inputstream occuer IOException or BuilderException. filename: "
-                    + file.getName(), exp);
+                    + file.getName());
         }
     }
 }

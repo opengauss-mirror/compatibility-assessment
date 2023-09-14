@@ -106,7 +106,7 @@ public class GeneralLogParser extends FileInputSqlParser {
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
             handleFileLockWhenExp(newFile.getName());
-            LOGGER.error("parse general log occur IOException. filename: " + file.getName(), exp);
+            LOGGER.error("parse general log occur IOException. filename: " + file.getName());
         }
     }
 
