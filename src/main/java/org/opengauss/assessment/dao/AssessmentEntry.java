@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Matcher;
@@ -73,10 +74,11 @@ public class AssessmentEntry {
             new DBCompatibilityAttr(DB_CMPT_C, "C"),
             new DBCompatibilityAttr(DB_CMPT_PG, "PG")};
     private static String[] dbPlugins = {"whale", "dolphin", null, null};
-    private static final int MAX_RETRY_COUNT = 5000;
+    private static final int MAX_RETRY_COUNT = 50000;
     private static int globalDatabaseType = -1;
     private static final int OUTPUT_SQL_FILE_COUNT = AssessmentInfoManager.getInstance().getOutputSqlFileCount();
     private static final Logger LOGGER = LoggerFactory.getLogger(AssessmentEntry.class);
+    private static final String DELIMITER = "delimiter";
 
     /**
      * assessment function.
@@ -164,7 +166,7 @@ public class AssessmentEntry {
                 fileCount.getAndIncrement();
                 readLock.lock();
                 try {
-                    Queue<ScanSingleSql> allSql = splitSQLFile(inputPath);
+                    Queue<ScanSingleSql> allSql = getSQL(inputPath);
                     int sqlSize = allSql.size();
                     gramTest(sqlSize, allSql, compatibilityTable, connection);
                     if (!compatibilityTable.generateSQLCompatibilityStatistic(fileName)) {
@@ -193,15 +195,75 @@ public class AssessmentEntry {
      * @param path : sql file path.
      * @return ScanSingleSql
      */
-    private Queue<ScanSingleSql> splitSQLFile(Path path) {
+    private Queue<ScanSingleSql> getSQL(Path path) {
         Queue<ScanSingleSql> allSql = new LinkedList<>();
         try (BufferedReader bufferedReader = Files.newBufferedReader(path)) {
-            splitSQLFileHelper(allSql, bufferedReader);
+            getSQLHelper(allSql, bufferedReader);
         } catch (IOException e) {
             return allSql;
         }
 
         return allSql;
+    }
+
+    /**
+     * Split sql file.
+     *
+     * @param allSql         : store sql.
+     * @param bufferedReader : bufferReader
+     * @throws IOException : throw IOException
+     */
+    private static void getSQLHelper(Queue<ScanSingleSql> allSql, BufferedReader bufferedReader)
+            throws IOException {
+        String sqlLine;
+        String delimiter = ";";
+        StringBuffer buffer = new StringBuffer();
+        boolean isDelimiter = false;
+        int line = 1;
+        while ((sqlLine = bufferedReader.readLine()) != null) {
+            sqlLine = sqlLine.trim();
+            if (sqlLine.equals("")) {
+                continue;
+            }
+
+            if (sqlLine.startsWith("--")) {
+                allSql.offer(new ScanSingleSql(sqlLine, line++));
+                continue;
+            }
+
+            /* The delimiter keyword has been read, but no delimiters were obtained */
+            if (isDelimiter) {
+                isDelimiter = false;
+                delimiter = sqlLine.replace(delimiter, "").trim();
+                /* read delimiter keyword */
+            } else if (isStartWithDelimiter(sqlLine)) {
+                sqlLine = sqlLine.replace(DELIMITER, "").replace(DELIMITER.toUpperCase(Locale.ROOT), "")
+                        .replace(delimiter, "").trim();
+                /* no delimiters were obtained */
+                if (sqlLine.equals("")) {
+                    isDelimiter = true;
+                } else {
+                    delimiter = sqlLine;
+                }
+            } else if (!sqlLine.endsWith(delimiter)) {
+                buffer.append(sqlLine);
+                buffer.append(" ");
+            } else {
+                buffer.append(sqlLine.replace(delimiter, ""));
+                allSql.offer(new ScanSingleSql(buffer.toString().trim(), line++));
+                buffer.setLength(0);
+            }
+        }
+    }
+
+    /**
+     * Determine if sqlLine starts with delimiter.
+     *
+     * @param sqlLine : sql line
+     * @return boolean
+     */
+    private static boolean isStartWithDelimiter(String sqlLine) {
+        return sqlLine.startsWith(DELIMITER) || sqlLine.startsWith(DELIMITER.toUpperCase(Locale.ROOT));
     }
 
     /**
