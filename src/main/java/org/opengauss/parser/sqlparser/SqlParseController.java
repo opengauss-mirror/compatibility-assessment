@@ -49,6 +49,11 @@ public class SqlParseController {
      * blank characters regix
      */
     public static final String REPLACEBLANK = "\\s+|\r|\n|\t";
+    
+    /**
+     * semicolon and enter, line break
+     */
+    public static final String DELICRLF = ";\r\n|;\r|;\n";
     private static final String FORMAT_REGIX = "^CREATE\\s+(FUNCTION|TRIGGER|PROCEDURE)";
     private static final Pattern SQLFORMATPATTERN = Pattern.compile(FORMAT_REGIX, Pattern.CASE_INSENSITIVE);
     private static final String DELIMITER = "delimiter";
@@ -95,7 +100,10 @@ public class SqlParseController {
      */
     public static String format(String sql) {
         String newSql = DELIMITER + " " + SLASH + System.lineSeparator();
-        newSql += sql.replaceAll(REPLACEBLANK, " ");
+        newSql += sql.replaceAll(DELICRLF, ";").trim();
+        if (newSql.endsWith(";")) {
+            newSql = newSql.substring(0, newSql.length() - 1);
+        }
         newSql += SLASH + System.lineSeparator();
         newSql += DELIMITER + " " + SEMI + System.lineSeparator();
         return newSql;
