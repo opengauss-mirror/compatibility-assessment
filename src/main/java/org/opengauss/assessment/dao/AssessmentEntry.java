@@ -386,31 +386,30 @@ public class AssessmentEntry {
         ScanSingleSql scanSingleSql = allSql.poll();
         String sql = scanSingleSql.getSql();
         String str = translateExplainTblnameSql(sql);
-        boolean hasGramTest = true;
         CompatibilityType compatibilityType = UNSUPPORTED_COMPATIBLE;
         String errorResult = "";
         if (assessmentSettings.isPlugin()) {
             String querySql = "ast " + str;
             try (PreparedStatement statement = connection.prepareStatement(querySql)) {
                 statement.execute();
+                compatibilityType = AST_COMPATIBLE;
             } catch (SQLException e) {
                 commit(connection);
                 compatibilityType = INCOMPATIBLE;
                 errorResult = e.getMessage();
-                hasGramTest = false;
             }
         }
 
         AssessmentType assessmentType = UNSUPPORTED;
-        if (hasGramTest) {
-            try {
-                assessmentType = getAssessmentType(connection, str);
-            } catch (SQLException e) {
-                commit(connection);
-                compatibilityType = INCOMPATIBLE;
-                errorResult = e.getMessage();
-            }
+        try {
+            assessmentType = getAssessmentType(connection, str);
+            compatibilityType = AST_COMPATIBLE;
+            errorResult = "";
+        } catch (SQLException e) {
+            commit(connection);
+        }
 
+        if (compatibilityType == AST_COMPATIBLE) {
             if (assessmentType == COMMENT) {
                 compatibilityType = SKIP_COMMAND;
             } else {
@@ -419,7 +418,6 @@ public class AssessmentEntry {
                     compatibilityType = COMPATIBLE;
                 } catch (SQLException e) {
                     commit(connection);
-                    compatibilityType = AST_COMPATIBLE;
                     errorResult = e.getMessage();
                 }
             }
