@@ -1,0 +1,127 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2012-2022. All rights reserved.
+ */
+
+package org.kit.agent;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.Instrumentation;
+import java.lang.instrument.UnmodifiableClassException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
+import org.kit.agent.impl.PreparedFormer;
+import org.kit.agent.impl.StateFormer;
+
+/**
+ * SqlAgent
+ *
+ * @author liu
+ * @since 2023-09-17
+ */
+@Slf4j
+public class SqlAgent {
+    private static final ClassFileTransformer STATEFORMER = new StateFormer();
+    private static final ClassFileTransformer PREPAREDFORMER = new PreparedFormer();
+    private static Class[] loadedClasses = null;
+    private static final List<String> names = Arrays.asList("com.mysql.cj.jdbc.StatementImpl",
+            "com.mysql.jdbc.StatementImpl",
+            "com.microsoft.sqlserver.jdbc.SQLServerStatement",
+            "org.postgresql.jdbc.PgStatement",
+            "oracle.jdbc.driver.OracleStatement",
+            "com.mysql.cj.jdbc.ClientPreparedStatement",
+            "com.mysql.jdbc.PreparedStatement",
+            "com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement",
+            "org.postgresql.jdbc.PgPreparedStatement");
+
+    private ScheduledExecutorService executor;
+
+    /**
+     * agentmain
+     *
+     * @param agentArgs agentArgs
+     * @param inst      inst
+     * @throws UnmodifiableClassException UnmodifiableClassException
+     */
+    public static void agentmain(String agentArgs, Instrumentation inst) throws UnmodifiableClassException {
+        loadedClasses = inst.getAllLoadedClasses();
+        inst.addTransformer(STATEFORMER, true);
+        inst.addTransformer(PREPAREDFORMER, true);
+        for (Class clazz : loadedClasses) {
+            Boolean isCont = names.contains(clazz.getName());
+            if (isCont) {
+                inst.retransformClasses(clazz);
+            }
+        }
+        List<String> params = Arrays.asList(agentArgs.split(" "));
+        boolean isNeverStop = false;
+        long executionTime = 0L;
+        TimeUnit unit = TimeUnit.MINUTES;
+        // 解析代理参数
+        for (String param : params) {
+            String[] keyValue = param.split("=");
+            if (keyValue.length != 2) {
+                return;
+            }
+            String key = keyValue[0];
+            String value = keyValue[1];
+            if (key.equals("neverStop") && value.equalsIgnoreCase("true")) {
+                isNeverStop = true;
+            }
+            if (key.equals("executionTime")) {
+                executionTime = Long.parseLong(value);
+            }
+            if (key.equals("unit")) {
+                if (value.equalsIgnoreCase("seconds")) {
+                    unit = TimeUnit.SECONDS;
+                } else if (value.equalsIgnoreCase("minutes")) {
+                    unit = TimeUnit.MINUTES;
+                } else if (value.equalsIgnoreCase("hours")) {
+                    unit = TimeUnit.HOURS;
+                } else if (value.equalsIgnoreCase("days")) {
+                    unit = TimeUnit.DAYS;
+                } else {
+                    log.info("nothing");
+                }
+            }
+        }
+        if (isNeverStop) {
+            return;
+        }
+        SqlAgent sqlAgent = new SqlAgent();
+        sqlAgent.scheduleRemoveTransformers(inst, executionTime, unit);
+        // 使用完毕后关闭线程池
+        sqlAgent.shutdownExecutor();
+    }
+
+    private void scheduleRemoveTransformers(Instrumentation inst, long executionTime, TimeUnit unit) {
+        executor = Executors.newSingleThreadScheduledExecutor();
+        executor.schedule(() -> {
+            inst.removeTransformer(STATEFORMER);
+            inst.removeTransformer(PREPAREDFORMER);
+            loadedClasses = inst.getAllLoadedClasses();
+            for (Class clazz : loadedClasses) {
+                Boolean isCont = names.contains(clazz.getName());
+                if (isCont) {
+                    try {
+                        log.info("start reconversion operation---->" + clazz);
+                        inst.retransformClasses(clazz);
+                        log.info("reconversion operation end---->" + clazz);
+                    } catch (UnmodifiableClassException e) {
+                        log.error("Failed to retransform class: " + clazz.getName() + ". Error: " + e.getMessage());
+                    }
+                }
+            }
+        }, executionTime, unit);
+    }
+
+    private void shutdownExecutor() {
+        if (executor != null) {
+            log.info("Close thread pool");
+            executor.shutdown();
+        }
+    }
+}
