@@ -71,8 +71,46 @@ diff -Naur a/src/main/java/org/apache/ibatis/mapping/ResultMapping.java b/src/ma
  
 diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java
 --- a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 14:59:18.356889096 +0800
-+++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-09-05 15:16:55.927442035 +0800
-@@ -40,6 +40,7 @@
++++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-11-10 15:59:43.318023221 +0800
+@@ -15,6 +15,11 @@
+  */
+ package org.apache.ibatis.parsing;
+ 
++import java.util.Arrays;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Set;
++
+ /**
+  * @author Clinton Begin
+  */
+@@ -23,6 +28,11 @@
+   private final String openToken;
+   private final String closeToken;
+   private final TokenHandler handler;
++  private final Set<String> keywordSet = new HashSet<>(Arrays.asList(
++            "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER",
++            "DROP", "TRUNCATE", "WHERE", "ORDER", "GROUP", "HAVING", "JOIN",
++            "LEFT", "RIGHT", "INNER", "UNION", "DISTINCT", "LIMIT", "OFFSET"
++    ));
+ 
+   public GenericTokenParser(String openToken, String closeToken, TokenHandler handler) {
+     this.openToken = openToken;
+@@ -30,6 +40,13 @@
+     this.handler = handler;
+   }
+ 
++  private String handleExpression(StringBuilder expression) {
++    if (keywordSet.contains(expression.toString().toUpperCase())) {
++        return expression.toString() + "_value";
++    }
++    return expression.toString();
++  }
++
+   public String parse(String text) {
+     if (text == null || text.isEmpty()) {
+       return "";
+@@ -40,6 +57,7 @@
        return text;
      }
      char[] src = text.toCharArray();
@@ -80,7 +118,7 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
      int offset = 0;
      final StringBuilder builder = new StringBuilder();
      StringBuilder expression = null;
-@@ -73,7 +74,13 @@
+@@ -73,7 +91,17 @@
            builder.append(src, start, src.length - start);
            offset = src.length;
          } else {
@@ -90,7 +128,11 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
 +            builder.append("$" + order);
 +            order++;
 +          } else {
-+            builder.append(expression);
++	    if (builder.toString().trim().toLowerCase().endsWith("in")) {
++		builder.append("(" + handleExpression(expression) + ")");
++	    } else {
++                builder.append(handleExpression(expression));
++	    }
 +          }
            offset = end + closeToken.length();
          }
@@ -147,3 +189,16 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/
    }
  
  }
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java	2023-11-10 16:59:54.109851059 +0800
+@@ -30,8 +30,7 @@
+ 
+   @Override
+   public boolean apply(DynamicContext context) {
+-    final Object value = OgnlCache.getValue(expression, context.getBindings());
+-    context.bind(name, value);
++    context.bind(name, null);
+     return true;
+   }
+ 

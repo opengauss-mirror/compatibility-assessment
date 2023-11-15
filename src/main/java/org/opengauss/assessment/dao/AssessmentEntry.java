@@ -249,7 +249,7 @@ public class AssessmentEntry {
                 buffer.append(sqlLine);
                 buffer.append(" ");
             } else {
-                buffer.append(sqlLine.replace(delimiter, ""));
+                buffer.append(sqlLine.substring(0, sqlLine.length() - delimiter.length()));
                 allSql.offer(new ScanSingleSql(buffer.toString().trim(), line++));
                 buffer.setLength(0);
             }
