@@ -19,9 +19,12 @@
 <img src="./images/conf.jpg"/>
 
 * 配置conf文件下的yml信息
+* 自定义端口,应用访问路径(例如:/idata;/datachain;默认可以不修改)
 * 启动命令:java -jar tool.jar --spring.config.name=application --spring.config.location=classpath:/application.yml,file:./conf/application.yml &
 
 ### 文件下载
+* 修改localhost为对应服务器的ip地址
+* 如果修改应用访问路径context-path,则需要在/data之前,端口号之后添加对应的路径
 * 下载sql文件 get请求:http://localhost:7878/data/download/chrome/sql  (浏览器页面下载)
 * 下载sql文件 get请求:http://localhost:7878/data/download/linux/sql  (下载到指定的linux路径,tool.jar部署在linux环境)
 * 下载调用栈文件 get请求:http://localhost:7878/data/download/chrome/stack  (浏览器页面下载)

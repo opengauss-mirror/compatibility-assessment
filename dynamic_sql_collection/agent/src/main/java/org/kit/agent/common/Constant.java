@@ -124,7 +124,7 @@ public class Constant {
     /**
      * stakeRecord
      *
-     * @param sql  className
+     * @param sql        className
      * @param stackTrace stackTrace
      */
     public static void stakeRecord(String sql, StackTraceElement[] stackTrace) {
@@ -151,8 +151,7 @@ public class Constant {
     private static String dealQuery(String query) {
         String str = query;
         str = str.toLowerCase(Locale.ROOT).replace("\"", "")
-                .replace("+", "")
-                .replace(NEWLINE, "")
+                .replace(NEWLINE, " ")
                 .replaceAll("\\s{2,}", " ").trim();
         return str;
     }
