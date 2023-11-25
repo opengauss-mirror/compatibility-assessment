@@ -11,7 +11,7 @@
 
 ### 使用限制
 
-1. jdk版本11.0.20以上
+1. jdk版本11.0.0以上
 2. mysql数据库版本8.0.x,5.0.x
 3. scheduled的startTime必须设置在当前时间之后，否则会无法启动
 
@@ -23,11 +23,10 @@
 * 启动命令:java -jar tool.jar --spring.config.name=application --spring.config.location=classpath:/application.yml,file:./conf/application.yml &
 
 ### 文件下载
-* 修改localhost为对应服务器的ip地址
+* 修改ip为对应服务器的ip地址,port为自定义端口号;若更改context-path,请在/data之前添加context-path路径
 * 如果修改应用访问路径context-path,则需要在/data之前,端口号之后添加对应的路径
-* 下载sql文件 get请求:http://localhost:7878/data/download/chrome/sql  (浏览器页面下载)
-* 下载sql文件 get请求:http://localhost:7878/data/download/linux/sql  (下载到指定的linux路径,tool.jar部署在linux环境)
-* 下载调用栈文件 get请求:http://localhost:7878/data/download/chrome/stack  (浏览器页面下载)
-* 下载调用栈文件 get请求:http://localhost:7878/data/download/linux/stack  (下载到指定的linux路径,tool.jar部署在linux环境)
+* 下载采集结果文件 get请求:http://ip:port/data/download (浏览器页面下载)
+* 下载采集结果文件 curl -o sql_stack.zip http://ip:port/data/download  (服务器下载)
+
 
 

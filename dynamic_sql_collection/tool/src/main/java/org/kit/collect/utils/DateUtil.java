@@ -6,6 +6,8 @@ package org.kit.collect.utils;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 
 /**
@@ -67,5 +69,16 @@ public class DateUtil {
      */
     public static String dateToString(Date date) {
         return dateToString(date, DEFAULT_PATTERN);
+    }
+
+    /**
+     * getDate
+     *
+     * @return String String
+     */
+    public static String getDate() {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd_");
+        LocalDateTime ldt = LocalDateTime.now();
+        return ldt.format(dtf);
     }
 }

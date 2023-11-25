@@ -9,7 +9,7 @@ spring:
 
 server:
   # 服务器的HTTP端口，默认为8080
-  port: 7878
+  port: 1001
   servlet:
     # 应用的访问路径
     context-path: /
@@ -27,14 +27,14 @@ server:
 scheduled:
   neverStop: false
   task1:
-    startTime: "2023-11-14 18:52:00"
-    endTime: "2023-11-14 18:58:00"
+    startTime: "2023-11-28 20:22:00"
+    endTime: "2023-11-28 20:40:00"
   task2:
-    startTime: "2023-11-14 19:00:00"
-    endTime: "2023-11-14 19:20:00"
+    startTime: "2024-11-14 19:00:00"
+    endTime: "2024-11-14 19:20:00"
   task3:
-    startTime: "2023-11-14 20:58:02"
-    endTime: "2023-11-14 21:24:02"
+    startTime: "2024-11-14 20:58:02"
+    endTime: "2024-11-14 21:24:02"
 
 linux:
   config:
@@ -42,19 +42,4 @@ linux:
     port: 22               #linux 端口号
     userName: root         #linux 用户名
     linuxSecret: Huawei@123   #linux 登录密码
-    uploadPath: /usr/local/dynamic  # 插桩文件上传路径
-    pid: 21798                      # 插桩进程 pid
-
-file:
-  downloadPathSql: /usr/local/collect/collection.sql
-  downloadPathStack: /usr/local/collect/stack.txt
-
-dynamic:
-  insertion:
-    agentName: agent.jar
-    attachName: attach.jar
-    environment: source /etc/profile
-    prefix: java -jar
-    findSql: find / -name dynamic_collection.sql 2>/dev/null
-    findStack: find / -name call_stack.txt 2>/dev/null
-    resourcePath: stake/
+    pid: 16488                     # 插桩进程 pid
