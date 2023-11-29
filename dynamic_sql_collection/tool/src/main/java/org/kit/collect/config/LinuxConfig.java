@@ -20,7 +20,6 @@ public class LinuxConfig {
     private static Integer port;
     private static String userName;
     private static String linuxSecret;
-    private static String uploadPath;
     private static String pid;
 
     public static String getHost() {
@@ -53,14 +52,6 @@ public class LinuxConfig {
 
     public void setLinuxSecret(String linuxSecret) {
         this.linuxSecret = linuxSecret;
-    }
-
-    public static String getUploadPath() {
-        return uploadPath;
-    }
-
-    public void setUploadPath(String uploadPath) {
-        this.uploadPath = uploadPath;
     }
 
     public static String getPid() {

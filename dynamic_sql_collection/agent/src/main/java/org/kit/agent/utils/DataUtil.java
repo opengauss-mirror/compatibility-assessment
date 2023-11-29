@@ -24,4 +24,15 @@ public class DataUtil {
         LocalDateTime ldt = LocalDateTime.now();
         return ldt.format(dtf);
     }
+
+    /**
+     * getDate
+     *
+     * @return String String
+     */
+    public static String getDate() {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd_");
+        LocalDateTime ldt = LocalDateTime.now();
+        return ldt.format(dtf);
+    }
 }

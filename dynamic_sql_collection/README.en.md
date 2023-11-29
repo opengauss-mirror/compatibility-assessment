@@ -23,8 +23,8 @@
 <img src="./images/conf.jpg"/>
 
 
-### file download
-* Download sql file get request: http://localhost:7878/data/download/chrome/sql (browser page download)
-* Download sql file get request: http://localhost:7878/data/download/linux/sql (download to the specified linux path, tool.jar is deployed in the linux environment)
-* Download call stack file get request: http://localhost:7878/data/download/chrome/stack (browser page download)
-* Download the call stack file get request: http://localhost:7878/data/download/linux/stack (download to the specified linux path, tool.jar is deployed in the linux environment)
+### File Download
+* Change the IP address to the corresponding server's IP address and the port to a custom port number; If changing the context path, please add the context path before/data
+* If you modify the application access path context path, you need to add the corresponding path before/data and after the port number
+* Download collection result file get request: http://ip:port/data/download (Browser page download)
+* Download the collection result file curl - o SQL_ Stack.zip http://ip:port/data/download (Server Download)

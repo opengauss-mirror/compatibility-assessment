@@ -8,14 +8,14 @@ server:
 scheduled:
   neverStop: false  #设置采集永不停止
   task1:
-    startTime: "2023-11-14 20:50:00"  #第一个时间段采集sql开始时间
-    endTime: "2023-11-14 21:10:00"    #第一个时间段采集sql结束时间
+    startTime: "2023-11-28 20:22:00"  #第一个时间段采集sql开始时间
+    endTime: "2023-11-28 20:50:00"    #第一个时间段采集sql结束时间
   task2:
-    startTime: "2023-11-14 21:12:00"  #第二个时间段采集sql开始时间
-    endTime: "2023-11-14 21:32:00"    #第二个时间段采集sql开始时间
+    startTime: "2024-11-14 21:12:00"  #第二个时间段采集sql开始时间
+    endTime: "2024-11-14 21:32:00"    #第二个时间段采集sql开始时间
   task3:
-    startTime: "2023-11-14 21:36:00"  #第三个时间段采集sql开始时间
-    endTime: "2023-11-14 21:50:00"    #第三个时间段采集sql开始时间
+    startTime: "2024-11-14 21:36:00"  #第三个时间段采集sql开始时间
+    endTime: "2024-11-14 21:50:00"    #第三个时间段采集sql开始时间
 
 linux:
   config:
@@ -23,9 +23,5 @@ linux:
     port: 22               #linux 端口号
     userName: root         #linux 用户名
     linuxSecret : Huawei@123   #linux 登录密码
-    uploadPath: /usr/local/dynamic  # 插桩文件上传路径
-    pid: 5308                     # 插桩进程 pid
+    pid: 18153                     # 插桩进程 pid
 
-file:
-  downloadPathSql: /usr/local/collect/collection.sql  # sql文件下载地址 linux:/usr/local/collect/collection.sql
-  downloadPathStack: /usr/local/collect/stack.txt    # 调用栈文件下载地址 linux:/usr/local/collect/stack.txt

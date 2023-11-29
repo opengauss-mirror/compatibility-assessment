@@ -4,6 +4,7 @@
 
 package org.kit.collect.preload;
 
+import com.jcraft.jsch.Session;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -12,11 +13,11 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.kit.collect.common.Constant;
 import org.kit.collect.config.LinuxConfig;
-import org.kit.collect.config.StakeConfig;
 import org.kit.collect.domain.Regular;
 import org.kit.collect.domain.RegularTask;
 import org.kit.collect.service.impl.HeartbeatJob;
 import org.kit.collect.service.impl.PileInsertionJob;
+import org.kit.collect.utils.DateUtil;
 import org.kit.collect.utils.JschUtil;
 import org.kit.collect.utils.SchedulerUtil;
 import org.kit.collect.utils.cron.CronUtil;
@@ -49,9 +50,22 @@ public class DynamicStakeExecutor {
      */
     @PostConstruct
     public void startInsertingPiles() throws SchedulerException {
+        // Check configuration information
+        Session session = JschUtil.obtainSession();
+        // Check and create collection.sql if necessary  Check and create stack.txt if necessary
+        String pid = LinuxConfig.getPid();
+        String suffix = Constant.CHECK_SUFFIX
+                .replace(Constant.INSERTION_SQL, DateUtil.getDate() + Constant.INSERTION_SQL)
+                .replace(Constant.INSERTION_STACK, DateUtil.getDate() + Constant.INSERTION_STACK);
+        String create = Constant.CHECK_PREFIX + pid + suffix;
+        if (JschUtil.executeCommand(session, create).contains("not")) {
+            log.error("Process with pid " + pid + " does not exist");
+        }
         if (Regular.isNeverStop) {
-            String command = StakeConfig.getCommand() + "neverStop=true executionTime=" + "3" + " " + "unit=minutes";
-            JschUtil.executeTask(command);
+            String command = Constant.COMMAND
+                    .replace("pid", pid)
+                    .replace("false", "true").replace("time", "3");
+            JschUtil.executeTask(command, JschUtil.obtainSession());
         } else {
             SchedulerFactory schedulerFactory = new StdSchedulerFactory();
             scheduler = schedulerFactory.getScheduler();

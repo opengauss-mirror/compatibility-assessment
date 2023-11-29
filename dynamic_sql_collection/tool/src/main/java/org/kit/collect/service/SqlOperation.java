@@ -4,8 +4,6 @@
 
 package org.kit.collect.service;
 
-import org.kit.collect.utils.response.RespBean;
-
 import javax.servlet.http.HttpServletResponse;
 
 /**
@@ -16,18 +14,9 @@ import javax.servlet.http.HttpServletResponse;
  */
 public interface SqlOperation {
     /**
-     * downloadLinux
+     * download
      *
-     * @param fileType fileType
-     * @return RespBean
-     */
-    RespBean downloadLinux(String fileType);
-
-    /**
-     * downloadChrome
-     *
-     * @param fileType fileType
      * @param response response
      */
-    void downloadChrome(String fileType, HttpServletResponse response);
+    void download(HttpServletResponse response);
 }

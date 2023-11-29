@@ -4,8 +4,10 @@
 
 package org.kit.collect.service.impl;
 
+import com.jcraft.jsch.Session;
 import lombok.extern.slf4j.Slf4j;
-import org.kit.collect.config.StakeConfig;
+import org.kit.collect.common.Constant;
+import org.kit.collect.config.LinuxConfig;
 import org.kit.collect.utils.JschUtil;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
@@ -25,7 +27,8 @@ public class PileInsertionJob implements Job {
         log.info("start inserting piles............");
         JobDataMap dataMap = context.getJobDetail().getJobDataMap();
         String time = dataMap.getString("time");
-        String command = StakeConfig.getCommand() + "neverStop=false executionTime=" + time + " " + "unit=minutes";
-        JschUtil.executeTask(command);
+        String command = Constant.COMMAND.replace("pid", LinuxConfig.getPid()).replace("time", time);
+        Session session = JschUtil.obtainSession();
+        JschUtil.executeTask(command, session);
     }
 }

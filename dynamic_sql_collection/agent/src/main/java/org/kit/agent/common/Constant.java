@@ -98,8 +98,9 @@ public class Constant {
     public static final List<String> PRECLASSNAME = List.of(
             PRE_MYSQL8, PRE_MYSQL5, PRE_SQLSERVER, PRE_OPENGAUSS, PRE_ORACLE);
     private static final String NEWLINE = StrUtil.LF;
-    private static final String SQL_NAME = "/kit/file/collection.sql";
-    private static final String STACK_NAME = "/kit/file/stack.txt";
+    private static final String SQL_NAME = "collection.sql";
+    private static final String STACK_NAME = "stack.txt";
+    private static final String PATH = "/kit/file/";
 
     /**
      * sqlRecord
@@ -108,17 +109,18 @@ public class Constant {
      * @param query     query
      */
     public static void sqlRecord(String className, String query) {
-        createFile(SQL_NAME);
+        String sqlPath = PATH + DataUtil.getDate() + SQL_NAME;
+        createFile(sqlPath);
         String str = query;
         if (str.contains("PreparedStatement")) {
             str = str.substring(str.indexOf(":") + 1);
         }
         str = dealQuery(str);
-        if (isSqlRepeat(str, SQL_NAME)) {
+        if (isSqlRepeat(str, sqlPath)) {
             return;
         }
         log.info(DataUtil.getTimeNow() + " start recording sql statements");
-        writeStringToFile(str, SQL_NAME);
+        writeStringToFile(str, sqlPath);
     }
 
     /**
@@ -128,7 +130,8 @@ public class Constant {
      * @param stackTrace stackTrace
      */
     public static void stakeRecord(String sql, StackTraceElement[] stackTrace) {
-        createFile(STACK_NAME);
+        String stackPath = PATH + DataUtil.getDate() + STACK_NAME;
+        createFile(stackPath);
         String str = sql;
         if (str.contains("PreparedStatement")) {
             str = str.substring(str.indexOf(":") + 1);
@@ -141,11 +144,11 @@ public class Constant {
             sb.append(element.toString()).append(NEWLINE);
         }
         String logMessage = sb.toString();
-        if (isStackRepeat(logMessage, STACK_NAME)) {
+        if (isStackRepeat(logMessage, stackPath)) {
             return;
         }
         log.info(DataUtil.getTimeNow() + " start recording call stack information");
-        writeStringToFile(logMessage, STACK_NAME);
+        writeStringToFile(logMessage, stackPath);
     }
 
     private static String dealQuery(String query) {
