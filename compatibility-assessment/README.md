@@ -192,3 +192,4 @@ delimiter ;
 ```
 提取结果：select * from user where age = $1
 ```
+3、由于事务中不支持建库、删库等sql语句，所以这部分sql语句结果不能够完全兼容
