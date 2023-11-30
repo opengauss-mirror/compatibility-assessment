@@ -137,9 +137,21 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
            offset = end + closeToken.length();
          }
        }
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/DynamicContext.java b/src/main/java/org/apache/ibatis/scripting/xmltags/DynamicContext.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/DynamicContext.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/DynamicContext.java	2023-11-24 15:52:04.642584627 +0800
+@@ -70,6 +70,8 @@
+     return sqlBuilder.toString().trim();
+   }
+ 
++  public String getInnerSql() {return  getSql();}
++
+   public int getUniqueNumber() {
+     return uniqueNumber++;
+   }
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-07-21 14:34:20.000000000 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-11-25 09:43:45.486703017 +0800
 @@ -15,8 +15,9 @@
   */
  package org.apache.ibatis.scripting.xmltags;
@@ -172,9 +184,42 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
        DynamicContext oldContext = context;
        if (first || separator == null) {
          context = new PrefixedContext(context, "");
+@@ -137,7 +139,7 @@
+     return ITEM_PREFIX + item + "_" + i;
+   }
+ 
+-  private static class FilteredDynamicContext extends DynamicContext {
++  static class FilteredDynamicContext extends DynamicContext {
+     private final DynamicContext delegate;
+     private final int index;
+     private final String itemIndex;
+@@ -168,6 +170,11 @@
+     }
+ 
+     @Override
++    public String getInnerSql() {
++      return delegate.getInnerSql();
++    }
++
++    @Override
+     public void appendSql(String sql) {
+       GenericTokenParser parser = new GenericTokenParser("#{", "}", content -> {
+         String newContent = content.replaceFirst("^\\s*" + item + "(?![^.,:\\s])", itemizeItem(item, index));
+@@ -228,6 +235,11 @@
+     }
+ 
+     @Override
++    public String getInnerSql() {
++      return delegate.getInnerSql();
++    }
++
++    @Override
+     public int getUniqueNumber() {
+       return delegate.getUniqueNumber();
+     }
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-09-07 21:00:14.077940261 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-11-23 20:30:53.099035836 +0800
 @@ -31,11 +31,8 @@
  
    @Override
@@ -189,6 +234,129 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/
    }
  
  }
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-11-30 14:22:18.072538216 +0800
+@@ -15,20 +15,86 @@
+  */
+ package org.apache.ibatis.scripting.xmltags;
+ 
++import java.util.Arrays;
++import java.util.List;
++import java.util.StringJoiner;
++import java.util.regex.Pattern;
++
+ /**
+  * @author Clinton Begin
+  */
+ public class StaticTextSqlNode implements SqlNode {
+-  private final String text;
+ 
+-  public StaticTextSqlNode(String text) {
+-    this.text = text;
+-  }
+-
+-  @Override
+-  public boolean apply(DynamicContext context) {
+-    context.appendSql(text);
+-    return true;
+-  }
++    private static final List<String> concateList = Arrays.asList("AND", "OR", "IN", "NOT IN", "LIKE", "LIMIT", "BETWEEN",
++            "ORDER BY", "GROUP BY", "HAVING", "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "WHERE", "VALUES", ",",
++            "SELECT", "INSERT", "UPDATE", "DROP", "DELETE", "FROM", "SET", "INTO", "WHEN", "CASE", "END", "DISTINCT");
++
++    private final String text;
++
++    public StaticTextSqlNode(String text) {
++        this.text = text;
++    }
++
++    @Override
++    public boolean apply(DynamicContext context) {
++        if (isConcateSql(context)) {
++            context.appendSql(text);
++            return true;
++        }
++        return false;
++    }
++
++    private boolean isConcateSql(DynamicContext context) {
++        String sql_fragment = context.getInnerSql().toUpperCase();
++        if (sql_fragment.length() == 0 || text.trim().length() == 0) {
++            return true;
++        }
++        boolean endWithKeyword = false;
++        boolean startWithKeyword = false;
++        for (String keyword : concateList) {
++            if (startWithKeyword && endWithKeyword) break;
++            if (!endWithKeyword && sql_fragment.endsWith(keyword)) {
++                endWithKeyword = true;
++            }
++            if (!startWithKeyword && text.toUpperCase().trim().startsWith(keyword)) {
++                startWithKeyword = true;
++            }
++        }
++
++        if (!handleTheSame(startWithKeyword, endWithKeyword, sql_fragment)) {
++            return false;
++        }
++        if (!handleOrderBy(context)) {
++            return false;
++        }
++
++        return true;
++    }
++
++    private boolean handleTheSame(boolean startWithKeyword, boolean endWithKeyword, String sql_fragment) {
++	if (startWithKeyword != endWithKeyword) return true;
++        if (!startWithKeyword && !endWithKeyword && (sql_fragment.endsWith("(") || text.trim().startsWith("("))) {
++            return true;
++        }
++        if (startWithKeyword && endWithKeyword) {
++            if (sql_fragment.endsWith("INSERT") && text.trim().toUpperCase().startsWith("INTO")) {
++                return true;
++            }
++            if (sql_fragment.endsWith("DELETE") && text.trim().toUpperCase().startsWith("FROM")) {
++                return true;
++            }
++            if (sql_fragment.endsWith("SELECT") && text.trim().toUpperCase().startsWith("DISTINCT")) {
++                return  true;
++            }
++        }
++        return false;
++    }
+ 
++    private boolean handleOrderBy(DynamicContext context) {
++        String sql_fragment = context.getInnerSql().toUpperCase();
++        if (sql_fragment.indexOf("ORDER BY") != -1 && text.toUpperCase().trim().indexOf("ORDER BY") != -1) {
++            return false;
++        }
++        return true;
++    }
+ }
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java	2023-07-21 14:59:18.357889106 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java	2023-11-24 15:51:05.874000568 +0800
+@@ -72,7 +72,7 @@
+     return Collections.emptyList();
+   }
+ 
+-  private class FilteredDynamicContext extends DynamicContext {
++  class FilteredDynamicContext extends DynamicContext {
+     private final DynamicContext delegate;
+     private boolean prefixApplied;
+     private boolean suffixApplied;
+@@ -121,6 +121,10 @@
+       return delegate.getSql();
+     }
+ 
++    public String getInnerSql() {
++      return this.sqlBuffer.toString().trim();
++    }
++
+     private void applyPrefix(StringBuilder sql, String trimmedUppercaseSql) {
+       if (!prefixApplied) {
+         prefixApplied = true;
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java	2023-07-21 14:59:18.357889106 +0800
 +++ b/src/main/java/org/apache/ibatis/scripting/xmltags/VarDeclSqlNode.java	2023-11-10 16:59:54.109851059 +0800
