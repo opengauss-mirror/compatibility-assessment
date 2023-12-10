@@ -27,7 +27,9 @@ public class PileInsertionJob implements Job {
         log.info("start inserting piles............");
         JobDataMap dataMap = context.getJobDetail().getJobDataMap();
         String time = dataMap.getString("time");
-        String command = Constant.COMMAND.replace("pid", LinuxConfig.getPid()).replace("time", time);
+        String path = LinuxConfig.getFilePath();
+        String pid = LinuxConfig.getPid();
+        String command = String.format(Constant.COMMAND, path, pid, path, "false", time, path);
         Session session = JschUtil.obtainSession();
         JschUtil.executeTask(command, session);
     }

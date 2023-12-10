@@ -9,7 +9,7 @@ spring:
 
 server:
   # 服务器的HTTP端口，默认为8080
-  port: 1001
+  port: 8085
   servlet:
     # 应用的访问路径
     context-path: /
@@ -27,14 +27,14 @@ server:
 scheduled:
   neverStop: false
   task1:
-    startTime: "2023-11-28 20:22:00"
-    endTime: "2023-11-28 20:40:00"
+    startTime: "2023-12-31 15:16:00"
+    endTime: "2023-12-31 15:30:00"
   task2:
-    startTime: "2024-11-14 19:00:00"
-    endTime: "2024-11-14 19:20:00"
+    startTime: "2023-12-31 15:32:00"
+    endTime: "2023-12-31 16:20:00"
   task3:
-    startTime: "2024-11-14 20:58:02"
-    endTime: "2024-11-14 21:24:02"
+    startTime: "2023-12-31 16:22:00"
+    endTime: "2023-12-31 17:30:00"
 
 linux:
   config:
@@ -42,4 +42,5 @@ linux:
     port: 22               #linux 端口号
     userName: root         #linux 用户名
     linuxSecret: Huawei@123   #linux 登录密码
-    pid: 16488                     # 插桩进程 pid
+    pid: 12813                # 插桩进程 pid
+    filePath: /qwe/test002/      # 采集的sql生成的文件路径

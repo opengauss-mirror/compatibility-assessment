@@ -4,7 +4,6 @@
 
 package org.kit.collect.service.impl;
 
-import cn.hutool.core.util.StrUtil;
 import com.jcraft.jsch.Session;
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,7 +19,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.kit.collect.common.Constant;
+import org.kit.collect.config.LinuxConfig;
 import org.kit.collect.manager.MonitorManager;
 import org.kit.collect.service.SqlOperation;
 import org.kit.collect.utils.JschUtil;
@@ -40,7 +39,7 @@ public class SqlOperationImpl implements SqlOperation {
     @Override
     public void download(HttpServletResponse response) {
         Session session = JschUtil.obtainSession();
-        List<String> fileNames = JschUtil.getFileNamesByPath(session, Constant.INSERTION_UPLOADPATH);
+        List<String> fileNames = JschUtil.getFileNamesByPath(session, LinuxConfig.getFilePath());
         List<File> files = new ArrayList<>();
         response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + "sql_stack.zip");
         try (ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream())) {
@@ -50,7 +49,7 @@ public class SqlOperationImpl implements SqlOperation {
                     @Override
                     public File call() {
                         try (OutputStream out = new FileOutputStream(name)) {
-                            JschUtil.downLoad(session, Constant.INSERTION_UPLOADPATH + StrUtil.C_SLASH + name, out);
+                            JschUtil.downLoad(session, LinuxConfig.getFilePath() + name, out);
                         }
                         return new File(name);
                     }
