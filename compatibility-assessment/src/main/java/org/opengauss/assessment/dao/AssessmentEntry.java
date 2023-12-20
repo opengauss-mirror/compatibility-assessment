@@ -15,16 +15,24 @@
 
 package org.opengauss.assessment.dao;
 
+import com.alibaba.fastjson.JSONObject;
 import org.opengauss.parser.FileLocks;
 import org.opengauss.parser.FilesOperation;
 import org.opengauss.parser.command.Commander;
 import org.opengauss.parser.configure.AssessmentInfoChecker;
 import org.opengauss.parser.configure.AssessmentInfoManager;
+import org.opengauss.parser.sqlparser.SqlParseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.Statement;
+
+
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,17 +41,18 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.ResultSet;
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
 import java.util.Queue;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.opengauss.assessment.dao.AssessmentType.UNSUPPORTED;
@@ -63,6 +72,31 @@ import static org.opengauss.assessment.utils.JSchConnectionUtils.getJSchConnect;
  * @since : 2023/7/7
  */
 public class AssessmentEntry {
+    /**
+     * pos in report
+     */
+    public static final String RESULT_KEY_ID = "id";
+
+    /**
+     * line number in report
+     */
+    public static final String RESULT_KEY_LINE = "line";
+
+    /**
+     * sql number in report
+     */
+    public static final String RESULT_KEY_SQL = "sql";
+
+    /**
+     * compatibility type
+     */
+    public static final String RESULT_KEY_TYPE = "compatibilityType";
+
+    /**
+     * compatibility detail
+     */
+    public static final String RESULT_KEY_ERINFO = "errDetail";
+
     private static AssessmentSettings assessmentSettings = new AssessmentSettings();
     private static PsqlSettings pset = new PsqlSettings();
     private static final int DB_CMPT_A = 0;
@@ -79,6 +113,20 @@ public class AssessmentEntry {
     private static final int OUTPUT_SQL_FILE_COUNT = AssessmentInfoManager.getInstance().getOutputSqlFileCount();
     private static final Logger LOGGER = LoggerFactory.getLogger(AssessmentEntry.class);
     private static final String DELIMITER = "delimiter";
+    private static final String RESULT_DIR = System.getProperty("user.dir") + File.separator + "result";
+    private static final String RESULTFILE_SUFFIX = ".result";
+
+    private static Map<String, String> suffixMap = new HashMap<>() {
+        {
+            put("-mapper", ".xml");
+            put("-mapper-1", ".xml");
+            put("-sql", ".sql");
+            put("-general", ".general");
+            put("-slow", ".slow");
+        }
+    };
+
+    private ArrayList<String> originFileList = new ArrayList<>();
 
     /**
      * assessment function.
@@ -113,6 +161,8 @@ public class AssessmentEntry {
             setAutoCommit(connection);
             sqlAssessment(compatibilityTable, connection);
 
+            generateFileReport(compatibilityTable);
+
             if (!compatibilityTable.generateReportEnd()) {
                 LOGGER.error(assessmentSettings.getOutputFile() + ": can not write to file \"" + pset.getProname() + "\"");
             }
@@ -134,6 +184,7 @@ public class AssessmentEntry {
     private void sqlAssessment(CompatibilityTable compatibilityTable, Connection connection) {
         Path path = Paths.get(assessmentSettings.getInputDir());
         AtomicInteger fileCount = new AtomicInteger(0);
+        FilesOperation.clearDir(new File(RESULT_DIR));
         while (fileCount.intValue() < OUTPUT_SQL_FILE_COUNT) {
             if (Files.exists(path) && Files.isDirectory(path)) {
                 try (Stream<Path> files = Files.list(path)) {
@@ -156,6 +207,7 @@ public class AssessmentEntry {
                                      Stream<Path> files, Connection connection) {
         files.parallel().forEachOrdered(inputPath -> {
             String fileName = inputPath.getFileName().toString();
+            String resultName = getOriginFilenameByInput(fileName);
             Map<String, ReentrantReadWriteLock> lockers = FileLocks.getLockers();
             if (lockers.containsKey(fileName)) {
                 ReentrantReadWriteLock.ReadLock readLock;
@@ -168,16 +220,30 @@ public class AssessmentEntry {
                 try {
                     Queue<ScanSingleSql> allSql = getSQL(inputPath);
                     int sqlSize = allSql.size();
-                    gramTest(sqlSize, allSql, compatibilityTable, connection);
-                    if (!compatibilityTable.generateSQLCompatibilityStatistic(fileName)) {
-                        LOGGER.error(assessmentSettings.getOutputFile() + "%s: can not write to file \""
-                                + pset.getProname() + "\"");
-                    }
+                    gramTest(sqlSize, allSql, compatibilityTable, connection, resultName);
                 } finally {
                     readLock.unlock();
                 }
             }
         });
+    }
+
+    private String getOriginFilenameByInput(String inputFilename) {
+        if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_COLLECT)) {
+            originFileList.add(inputFilename);
+            return inputFilename + RESULTFILE_SUFFIX;
+        }
+
+        String resultName = "";
+        for (String middleSuffix : suffixMap.keySet()) {
+            if (inputFilename.endsWith(middleSuffix)) {
+                String tempName = inputFilename.substring(0, inputFilename.length() - middleSuffix.length());
+                resultName = tempName + middleSuffix + RESULTFILE_SUFFIX;
+                originFileList.add(tempName + suffixMap.get(middleSuffix));
+                break;
+            }
+        }
+        return resultName;
     }
 
     /**
@@ -215,44 +281,13 @@ public class AssessmentEntry {
      */
     private static void getSQLHelper(Queue<ScanSingleSql> allSql, BufferedReader bufferedReader)
             throws IOException {
-        String sqlLine;
-        String delimiter = ";";
-        StringBuffer buffer = new StringBuffer();
-        boolean isDelimiter = false;
+        String jsonLine;
         int line = 1;
-        while ((sqlLine = bufferedReader.readLine()) != null) {
-            sqlLine = sqlLine.trim();
-            if (sqlLine.equals("")) {
-                continue;
-            }
-
-            if (sqlLine.startsWith("--")) {
-                allSql.offer(new ScanSingleSql(sqlLine, line++));
-                continue;
-            }
-
-            /* The delimiter keyword has been read, but no delimiters were obtained */
-            if (isDelimiter) {
-                isDelimiter = false;
-                delimiter = sqlLine.replace(delimiter, "").trim();
-                /* read delimiter keyword */
-            } else if (isStartWithDelimiter(sqlLine)) {
-                sqlLine = sqlLine.replace(DELIMITER, "").replace(DELIMITER.toUpperCase(Locale.ROOT), "")
-                        .replace(delimiter, "").trim();
-                /* no delimiters were obtained */
-                if (sqlLine.equals("")) {
-                    isDelimiter = true;
-                } else {
-                    delimiter = sqlLine;
-                }
-            } else if (!sqlLine.endsWith(delimiter)) {
-                buffer.append(sqlLine);
-                buffer.append(" ");
-            } else {
-                buffer.append(sqlLine.substring(0, sqlLine.length() - delimiter.length()));
-                allSql.offer(new ScanSingleSql(buffer.toString().trim(), line++));
-                buffer.setLength(0);
-            }
+        while ((jsonLine = bufferedReader.readLine()) != null) {
+            String id = JSONObject.parseObject(jsonLine).getString(SqlParseController.KEY_ID);
+            String sql = JSONObject.parseObject(jsonLine).getString(SqlParseController.KEY_SQL)
+                    .replaceAll("\\s+", " ");
+            allSql.offer(new ScanSingleSql(sql.trim(), id, line++));
         }
     }
 
@@ -264,76 +299,6 @@ public class AssessmentEntry {
      */
     private static boolean isStartWithDelimiter(String sqlLine) {
         return sqlLine.startsWith(DELIMITER) || sqlLine.startsWith(DELIMITER.toUpperCase(Locale.ROOT));
-    }
-
-    /**
-     * Split sql file.
-     *
-     * @param allSql         : store sql.
-     * @param bufferedReader : bufferReader
-     * @throws IOException : throw IOException
-     */
-    private static void splitSQLFileHelper(Queue<ScanSingleSql> allSql, BufferedReader bufferedReader)
-            throws IOException {
-        StringBuffer buffer = new StringBuffer();
-        String sqlLine;
-        while ((sqlLine = bufferedReader.readLine()) != null) {
-            buffer.append(sqlLine + " ");
-        }
-
-        String sqlStr = buffer.toString();
-        buffer.delete(0, buffer.length());
-        String[] sqlArr;
-        List<String> delimiters = new ArrayList<>();
-        String delimiterRegex = "(delimiter|DELIMITER)(\\s+)//|(delimiter|DELIMITER)(\\s+);";
-        Matcher matcher = Pattern.compile(delimiterRegex).matcher(sqlStr);
-        String filterQuotes = "(?=(?:[^\"\']*[\"\'][^\"\']*[\"\'])*[^\"\']*$)";
-        while (matcher.find()) {
-            delimiters.add(matcher.group());
-        }
-        if (!delimiters.isEmpty()) {
-            splitSQLFileWithDelimiter(allSql, sqlStr, delimiters, filterQuotes, delimiterRegex);
-        } else {
-            sqlArr = sqlStr.split(";" + filterQuotes);
-            int line = 1;
-            for (String sql : sqlArr) {
-                sql = sql.trim();
-                if (!sql.equals("")) {
-                    allSql.offer(new ScanSingleSql(sql, line++));
-                }
-            }
-        }
-    }
-
-    /**
-     * Split sql file.
-     *
-     * @param allSql         : store sql.
-     * @param sqlStr         : sql string.
-     * @param delimiters     : delimiter sql.
-     * @param filterQuotes   : filter quotes regex.
-     * @param delimiterRegex : delimiter regex
-     */
-    private static void splitSQLFileWithDelimiter(Queue<ScanSingleSql> allSql, String sqlStr, List<String> delimiters,
-                                                  String filterQuotes, String delimiterRegex) {
-        String[] sqlArr;
-        String separator = ";";
-        int line = 1;
-        String[] sqlStrs = sqlStr.split(delimiterRegex);
-        for (int i = 0; i < sqlStrs.length; i++) {
-            sqlArr = sqlStrs[i].split(separator + filterQuotes);
-            for (String sql : sqlArr) {
-                sql = sql.trim();
-                if (!sql.equals("")) {
-                    allSql.offer(new ScanSingleSql(sql, line++));
-                }
-            }
-
-            if (i < delimiters.size()) {
-                String delimiter = delimiters.get(i);
-                separator = delimiter.replace("delimiter", "").replace("DELIMITER", "").trim();
-            }
-        }
     }
 
     /**
@@ -364,10 +329,13 @@ public class AssessmentEntry {
      * @param compatibilityTable : record assessment information.
      */
     private void gramTest(int sqlSize, Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
-                          Connection connection) {
+                          Connection connection, String resultName) {
         long index = 0L;
+        if (!FilesOperation.isCreateOutputFile(new File(RESULT_DIR + File.separator + resultName), RESULT_DIR)) {
+            LOGGER.warn("create result file failed, it may already exists. resultfile: " + resultName);
+        }
         while (!allSql.isEmpty()) {
-            gramTestHelper(allSql, compatibilityTable, connection);
+            gramTestHelper(allSql, compatibilityTable, connection, resultName);
             index++;
         }
 
@@ -382,7 +350,7 @@ public class AssessmentEntry {
      * @param connection         : jdbc connection.
      */
     private static void gramTestHelper(Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
-                                       Connection connection) {
+                                       Connection connection, String resultName) {
         ScanSingleSql scanSingleSql = allSql.poll();
         String sql = scanSingleSql.getSql();
         String str = translateExplainTblnameSql(sql);
@@ -423,7 +391,120 @@ public class AssessmentEntry {
             }
         }
 
-        compatibilityTable.appendOneSQL(scanSingleSql.getLine(), sql, assessmentType, compatibilityType, errorResult);
+        if (compatibilityType == INCOMPATIBLE && !validateSQL(str)) {
+            errorResult = "语法错误";
+        }
+        writeResToFile(resultName, scanSingleSql, compatibilityType, errorResult);
+    }
+
+    private static boolean validateSQL(String sql) {
+        try {
+            Statement stmt = CCJSqlParserUtil.parse(sql);
+            return true;
+        } catch (JSQLParserException e) {
+            return false;
+        }
+    }
+
+    private void readResFromFile(CompatibilityTable table) {
+        File dir = new File(RESULT_DIR);
+        File[] files = dir.listFiles();
+        Map<String, Boolean> fileNameMap = Arrays.stream(files).collect(
+                Collectors.toMap(File::getAbsolutePath, (element) -> false));
+
+        for (String fileName : fileNameMap.keySet()) {
+            if (fileNameMap.get(fileName)) {
+                continue;
+            }
+            List<SQLCompatibility> result;
+            table.getSqlCompatibilities().clear();
+            ArrayList<SQLCompatibility> arrayList1 = parseObject(fileName);
+            if (isMapperFile(fileName)) {
+                String anotherName;
+                if (fileName.endsWith("-mapper.result")) {
+                    int index = fileName.indexOf("-mapper.result");
+                    anotherName = fileName.substring(0, index) + "-mapper-1.result";
+                } else {
+                    int index = fileName.indexOf("-mapper-1.result");
+                    anotherName = fileName.substring(0, index) + "-mapper.result";
+                }
+                ArrayList<SQLCompatibility> arrayList2 = parseObject(anotherName);
+                result = mergeResult(arrayList1, arrayList2);
+                fileNameMap.put(anotherName, true);
+            } else {
+                result = arrayList1;
+            }
+            table.appendMultipleSQL(result);
+            for (String suffix : suffixMap.keySet()) {
+                String inputFile = fileName.substring(0, fileName.lastIndexOf('.'));
+                if (inputFile.endsWith(suffix)) {
+                    fileName = inputFile.substring(0, inputFile.length() - suffix.length()) + suffixMap.get(suffix);
+                }
+            }
+            table.generateSQLCompatibilityStatistic(fileName);
+        }
+    }
+
+    private boolean isMapperFile(String fileName) {
+        return fileName.endsWith("-mapper.result") || fileName.endsWith("-mapper-1.result");
+    }
+
+    private ArrayList<SQLCompatibility> parseObject(String fileName) {
+        ArrayList<SQLCompatibility> arrayList = new ArrayList<>();
+        File file = new File(fileName);
+        String line;
+        try (BufferedReader br = FilesOperation.getBufferedReader(file)) {
+            while ((line = br.readLine()) != null) {
+                SQLCompatibility object = JSONObject.parseObject(line, SQLCompatibility.class);
+                arrayList.add(object);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return arrayList;
+    }
+
+    private static List<SQLCompatibility> mergeResult(List<SQLCompatibility> list1, List<SQLCompatibility> list2) {
+        List<SQLCompatibility> result = new ArrayList<>();
+        Map<String, SQLCompatibility> map = list2.stream().collect(Collectors.toMap(
+                SQLCompatibility::getId, (element) -> element));
+        for (SQLCompatibility object1 : list1) {
+            if (map.containsKey(object1.getId())) {
+                SQLCompatibility object2 = map.get(object1.getId());
+                result.add(chooseOne(object1, object2));
+                map.remove(object1.getId());
+            } else {
+                result.add(object1);
+            }
+        }
+        result.addAll(map.values());
+        return result;
+    }
+
+    private static SQLCompatibility chooseOne(SQLCompatibility object1, SQLCompatibility object2) {
+        if (CompatibilityType.isCompatible(object1) && CompatibilityType.isIncompatible(object2)) {
+            return object1;
+        }
+        if (CompatibilityType.isIncompatible(object1) && CompatibilityType.isCompatible(object2)) {
+            return object2;
+        }
+        return object1;
+    }
+
+    private static void writeResToFile(String resFilename, ScanSingleSql scanSingleSql,
+                                CompatibilityType compatibilityType, String errorInfo) {
+        File resFile = new File(RESULT_DIR + File.separator + resFilename);
+        try (BufferedWriter bufWriter = FilesOperation.getBufferedWriter(resFile, true)) {
+            JSONObject jsonObject = new JSONObject()
+                    .fluentPut(RESULT_KEY_LINE, scanSingleSql.getLine())
+                    .fluentPut(RESULT_KEY_SQL, scanSingleSql.getSql())
+                    .fluentPut(RESULT_KEY_TYPE, compatibilityType)
+                    .fluentPut(RESULT_KEY_ERINFO, errorInfo)
+                    .fluentPut(RESULT_KEY_ID, scanSingleSql.getId());
+            bufWriter.write(jsonObject.toJSONString() + System.lineSeparator());
+        } catch (IOException exp) {
+            LOGGER.error("write assessment result record to file failed, filename is " + resFilename);
+        }
     }
 
     /**
@@ -746,5 +827,14 @@ public class AssessmentEntry {
     private void initPSqlSettings() {
         pset.setDbname(null);
         pset.setProname("gs_assessment");
+    }
+
+    /**
+     * Print process.
+     *
+     * @param compatibilityTable  : CompatibilityTable.
+     */
+    public void generateFileReport(CompatibilityTable compatibilityTable) {
+        readResFromFile(compatibilityTable);
     }
 }

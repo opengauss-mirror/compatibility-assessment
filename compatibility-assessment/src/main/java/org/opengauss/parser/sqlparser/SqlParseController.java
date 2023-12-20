@@ -15,6 +15,7 @@
 
 package org.opengauss.parser.sqlparser;
 
+import com.alibaba.fastjson.JSONObject;
 import org.opengauss.parser.FileDistributer;
 import org.opengauss.parser.FileLocks;
 import org.opengauss.parser.command.Commander;
@@ -49,11 +50,21 @@ public class SqlParseController {
      * blank characters regix
      */
     public static final String REPLACEBLANK = "\\s+|\r|\n|\t";
-    
+
     /**
      * semicolon and enter, line break
      */
     public static final String DELICRLF = ";\r\n|;\r|;\n";
+
+    /**
+     * key for origin position or id in middle file
+     */
+    public static final String KEY_ID = "id";
+
+    /**
+     * key for sql statement in middle file
+     */
+    public static final String KEY_SQL = "sql";
     private static final String FORMAT_REGIX = "^CREATE\\s+(FUNCTION|TRIGGER|PROCEDURE)";
     private static final Pattern SQLFORMATPATTERN = Pattern.compile(FORMAT_REGIX, Pattern.CASE_INSENSITIVE);
     private static final String DELIMITER = "delimiter";
@@ -122,6 +133,19 @@ public class SqlParseController {
         ReentrantReadWriteLock locker = FileLocks.addLockerAndLockFile(filename);
         bufWriter.write(builder.toString());
         locker.writeLock().unlock();
+    }
+
+    /**
+     * write sql to sqlfile
+     *
+     * @param builder StringBuilder
+     * @param valueId Object
+     * @param valueSql String
+     */
+    public static void appendJsonLine(StringBuilder builder, Object valueId, String valueSql) {
+        builder.append(new JSONObject().fluentPut(SqlParseController.KEY_ID, valueId)
+                .fluentPut(SqlParseController.KEY_SQL, valueSql)
+                .toJSONString() + System.lineSeparator());
     }
 
     private void initSqlParser() {

@@ -90,5 +90,24 @@ public class FilesOperation {
         }
         return hasCreateStatus;
     }
+
+    /**
+     * clear dictionary
+     *
+     * @param dir File
+     */
+    public static void clearDir(File dir) {
+        delete(dir);
+    }
+
+    private static void delete(File file) {
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            for (File subFile : files) {
+                delete(subFile);
+            }
+        }
+        file.delete();
+    }
 }
 

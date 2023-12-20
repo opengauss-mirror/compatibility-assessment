@@ -15,8 +15,12 @@
 
 package org.opengauss.parser.entry;
 
+import org.opengauss.parser.FilesOperation;
 import org.opengauss.parser.command.Commander;
+import org.opengauss.parser.configure.AssessmentInfoManager;
 import org.opengauss.parser.sqlparser.SqlParseController;
+
+import java.io.File;
 
 /**
  * Description: parse module entry
@@ -41,6 +45,7 @@ public class CommandEntry {
      */
     public void mainEntry(String[] args) {
         commander.parseCmd(args);
+        FilesOperation.clearDir(new File(AssessmentInfoManager.getInstance().getSqlOutDir()));
         SqlParseController sqlParseController = new SqlParseController();
         sqlParseController.parseSql();
     }

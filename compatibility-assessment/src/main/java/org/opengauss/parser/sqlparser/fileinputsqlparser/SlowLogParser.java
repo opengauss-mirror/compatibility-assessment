@@ -40,6 +40,7 @@ public class SlowLogParser extends FileInputSqlParser {
     private static final String SET_TIMESTAMP = "SET timestamp";
 
     private File file;
+    private int pos = 1;
 
     /**
      * Constructor
@@ -90,12 +91,13 @@ public class SlowLogParser extends FileInputSqlParser {
         try (BufferedReader bufReader = FilesOperation.getBufferedReader(file);
              BufferedWriter bufWriter = FilesOperation.getBufferedWriter(newFile, false)) {
             while ((line = bufReader.readLine()) != null) {
+                pos++;
                 readBeforeSql(line, bufReader, builder);
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
             handleFileLockWhenExp(newFile.getName());
-            LOGGER.error("parse slow log occur IOException. filename: " + file.getName());
+            LOGGER.error("parse slow log occur IOException. filename: " + file.getName(), exp);
         }
     }
 
@@ -103,6 +105,7 @@ public class SlowLogParser extends FileInputSqlParser {
         String line = record;
         if (isNewRecord(line)) {
             while ((line = bufReader.readLine()) != null) {
+                pos++;
                 if (line.startsWith(SET_TIMESTAMP)) {
                     break;
                 }
@@ -114,14 +117,13 @@ public class SlowLogParser extends FileInputSqlParser {
     private void readCompleteSql(BufferedReader bufReader, StringBuilder builder) throws IOException {
         String sql = "";
         String line;
+        int sqlLineNums = 0;
         while ((line = bufReader.readLine()) != null) {
+            sqlLineNums++;
             sql = (sql == "") ? line : (sql.trim() + " " + line);
             if (line.endsWith(";")) {
-                if (SqlParseController.isNeedFormat(sql)) {
-                    builder.append(SqlParseController.format(sql));
-                } else {
-                    builder.append(sql.replaceAll(SqlParseController.REPLACEBLANK, " ") + System.lineSeparator());
-                }
+                SqlParseController.appendJsonLine(builder, pos, sql);
+                pos += sqlLineNums;
                 break;
             }
         }

@@ -48,12 +48,18 @@ public class FileDistributer {
      */
     public Map<String, List<File>> distributeFiles(String dataDir) {
         AtomicReference<Integer> totalfiles = new AtomicReference<>(0);
+        AtomicReference<Integer> inputfiles = new AtomicReference<>(0);
         File dir = new File(dataDir);
         listAllFiles(dir);
         handler.getFileList().forEach((extension, list) -> {
+            if (extension.equalsIgnoreCase(SingleFileHandler.MAPPER_EXTENSION)) {
+                totalfiles.updateAndGet(v -> v + list.size());
+            }
             totalfiles.updateAndGet(v -> v + list.size());
+            inputfiles.updateAndGet(v -> v + list.size());
         });
         AssessmentInfoManager.getInstance().setOutputSqlFileCount(totalfiles.get());
+        AssessmentInfoManager.getInstance().setinputFileCount(inputfiles.get());
         AssessmentInfoManager.getInstance().setAssessmentFlag(true);
         return handler.getFileList();
     }

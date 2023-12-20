@@ -21,6 +21,7 @@ import org.opengauss.parser.configure.AssessmentInfoManager;
 import org.opengauss.parser.sqlparser.SqlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.ibatis.scripting.xmltags.StrategyChoice;
 
 import java.io.File;
 import java.io.IOException;
@@ -95,9 +96,13 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
         try {
             String fileName = inputFile.getCanonicalPath().substring(1)
                     .replaceAll(File.separator, "_");
+            String newSuffix = BAR + codeToExtension.get(fileTypeCode);
+            if (StrategyChoice.getStrategy() == StrategyChoice.STATEGY_JUDGE_KEYWORD) {
+                newSuffix += BAR + StrategyChoice.STATEGY_JUDGE_KEYWORD;
+            }
+
             String newFilename = outputDir + File.separator + fileName.replaceAll(DOTS
-                    + FilenameUtils.getExtension(inputFile.getCanonicalPath()),
-                    BAR + codeToExtension.get(fileTypeCode) + SqlFileParser.SQLFILE_SUFFIX);
+                    + FilenameUtils.getExtension(inputFile.getCanonicalPath()), newSuffix);
             newFile = new File(newFilename);
         } catch (IOException exp) {
             LOGGER.error("create outputfile file occur IOException, inputFile: %s", inputFile.getName());

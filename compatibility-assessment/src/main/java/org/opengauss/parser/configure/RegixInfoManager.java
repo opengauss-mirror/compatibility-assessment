@@ -15,6 +15,8 @@
 
 package org.opengauss.parser.configure;
 
+import java.util.regex.Pattern;
+
 /**
  * Description: Regix expression manager
  *
@@ -26,10 +28,14 @@ public class RegixInfoManager {
             + " \\d+  Rows_examined: \\d+";
     private static final String GENLOG_TIME = "^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}(Z|(\\+08:00))";
     private static final String GENLOG_THREADID = "\\d+";
-    private static final String[] GENLOG_CMDTYPES = {"Quit", "Init DB", "Query", "Field List", "Connect"};
+    private static final String[] GENLOG_CMDTYPES = {"Quit", "Init DB", "Query", "Field List", "Connect", "Execute",
+            "Prepare", "Close stmt"};
     private static final String GENLOG_CMDTYPES_REGIX = String.join("|", GENLOG_CMDTYPES);
     private static final String GENLOG_REGIX = GENLOG_TIME
             + ")\\s+(" + GENLOG_THREADID + ")\\s+(" + GENLOG_CMDTYPES_REGIX + ")";
+    private static final String[] SQLSTMT_HEADERS = {"SELECT", "INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER",
+            "DESC"};
+    private static final String SQLSTMT_HEADERS_REGIX = "^(" + String.join("|", SQLSTMT_HEADERS) + ")\\s+";
 
     /**
      * get slow log regix
@@ -47,5 +53,14 @@ public class RegixInfoManager {
      */
     public static String getGenlogRegix() {
         return GENLOG_REGIX;
+    }
+
+    /**
+     * get sql statement header regix
+     *
+     * @return Pattern
+     */
+    public static Pattern getSqlstmtHeadersRegix() {
+        return Pattern.compile(SQLSTMT_HEADERS_REGIX, Pattern.CASE_INSENSITIVE);
     }
 }

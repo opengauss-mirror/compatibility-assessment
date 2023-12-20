@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 public class ObjectSqlParser extends CollectSqlParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(CollectSqlParser.class);
     private static final String VIEWDDL_PREFIX = "Create View";
-    private static final String OUTPUTFILE = "collect_object.sql";
+    private static final String OUTPUTFILE = "collect_object";
     private static final String REGIX_VIEW = "^CREATE(.+)DEFINER VIEW?";
     private static final Pattern PATTERN_VIEW = Pattern.compile(REGIX_VIEW, Pattern.CASE_INSENSITIVE);
     private static Map<String, String> objectCreatestmtCol = new HashMap<>() {
@@ -140,12 +140,12 @@ public class ObjectSqlParser extends CollectSqlParser {
                     Matcher matcher = PATTERN_VIEW.matcher(ddl);
                     ddl = matcher.replaceAll(VIEWDDL_PREFIX);
                 }
-                builder.append(ddl.replaceAll(SqlParseController.REPLACEBLANK, " ")
-                        + ";" + System.lineSeparator());
+                SqlParseController.appendJsonLine(builder, null,
+                        ddl.replaceAll(SqlParseController.REPLACEBLANK, " "));
             } else {
                 String[] strs = ddl.split(" ", 3);
                 ddl = strs[0] + " " + strs[2];
-                builder.append(SqlParseController.format(ddl));
+                SqlParseController.appendJsonLine(builder, null, ddl);
             }
         }
     }

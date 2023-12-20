@@ -17,6 +17,7 @@ package org.opengauss.parser.sqlparser.collectsqlparser;
 
 import org.opengauss.parser.DbConnector;
 import org.opengauss.parser.FilesOperation;
+import org.opengauss.parser.configure.RegixInfoManager;
 import org.opengauss.parser.sqlparser.SqlParseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.regex.Pattern;
 
 /**
  * Description: get sql statement from mysql.slow_log
@@ -37,8 +39,9 @@ import java.sql.Statement;
  */
 public class SlowTableParser extends CollectSqlParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(SlowTableParser.class);
-    private static final String OUTPUTFILE = "collect_slow.sql";
+    private static final String OUTPUTFILE = "collect_slow";
     private static final String QUERY_SQL = "select sql_text from mysql.slow_log where db = '%s'";
+    private static final Pattern SQLHEADER_PATTERN = RegixInfoManager.getSqlstmtHeadersRegix();
 
     /**
      * parse sql from mysql.slow_log, need specify dbname
@@ -59,12 +62,9 @@ public class SlowTableParser extends CollectSqlParser {
              BufferedWriter bufWriter = FilesOperation.getBufferedWriter(outPutFile, false);
              ResultSet rs = statement.executeQuery(sql)) {
             while (rs.next()) {
-                String slowSql = rs.getString(1);
-                if (SqlParseController.isNeedFormat(slowSql)) {
-                    builder.append(SqlParseController.format(slowSql));
-                } else {
-                    builder.append(slowSql.replaceAll(SqlParseController.REPLACEBLANK, " ")
-                            + ";" + System.lineSeparator());
+                String slowSql = rs.getString(1).trim();
+                if (SQLHEADER_PATTERN.matcher(slowSql).find()) {
+                    SqlParseController.appendJsonLine(builder, null, rs.getString(1));
                 }
             }
             SqlParseController.writeSqlToFile(outPutFile.getName(), bufWriter, builder);

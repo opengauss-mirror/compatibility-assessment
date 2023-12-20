@@ -15,11 +15,14 @@
 
 package org.opengauss.assessment.dao;
 
+import org.opengauss.parser.command.Commander;
+
 import java.io.File;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 import static org.opengauss.assessment.dao.CompatibilityType.UNSUPPORTED_COMPATIBLE;
@@ -36,6 +39,7 @@ import static org.opengauss.assessment.dao.CompatibilityType.SKIP_COMMAND;
  */
 public class CompatibilityTable {
     private File fd;
+
     private Queue<SQLCompatibility> sqlCompatibilities = new LinkedList<>();
 
     /**
@@ -46,17 +50,23 @@ public class CompatibilityTable {
     }
 
     /**
-     * Append one sql.
+     * append sql compatibility to Queue
      *
-     * @param line              : sql line num.
-     * @param sql               : assessment sql.
-     * @param assessmentType    :  sql type.
-     * @param compatibilityType : assessment result type.
-     * @param errorResult       : error information.
+     * @param arrayList List
      */
-    public void appendOneSQL(int line, String sql, AssessmentType assessmentType, CompatibilityType compatibilityType,
-                             String errorResult) {
-        this.sqlCompatibilities.add(new SQLCompatibility(line, sql, assessmentType, compatibilityType, errorResult));
+    public void appendMultipleSQL(List<SQLCompatibility> arrayList) {
+        for (SQLCompatibility object : arrayList) {
+            this.sqlCompatibilities.add(object);
+        }
+    }
+
+    /**
+     * get sql compatibilities
+     *
+     * @return Queue<SQLCompatibility>
+     */
+    public Queue<SQLCompatibility> getSqlCompatibilities() {
+        return sqlCompatibilities;
     }
 
     /**
@@ -70,8 +80,12 @@ public class CompatibilityTable {
                 + System.lineSeparator() + "<th class=\"wdrbg\" scope=\"col\">行号</th>"
                 + "<th class=\"wdrbg\" scope=\"col\">SQL语句</th>"
                 + "<th class=\"wdrbg\" scope=\"col\">兼容性</th>"
-                + "<th class=\"wdrbg\" scope=\"col\">兼容性详情</th>"
-                + "</tr>" + System.lineSeparator();
+                + "<th class=\"wdrbg\" scope=\"col\">兼容性详情</th>";
+
+        if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
+            str += "<th class=\"wdrbg\" scope=\"col\">初始位置</th>";
+        }
+        str += "</tr>" + System.lineSeparator();
 
         try (FileWriter fileWriter = new FileWriter(fd, true)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
@@ -87,15 +101,21 @@ public class CompatibilityTable {
 
                     SQLCompatibility sqlCompatibility = this.sqlCompatibilities.poll();
                     String sqlDetail = "<tr style=\"border-top-width: 2px;\">"
-                            + "<td style=\"width:3%\" class=\"" + type + "\">" + sqlCompatibility.getLine()
+                            + "<td style=\"width:2%\" class=\"" + type + "\">" + sqlCompatibility.getLine()
                             + System.lineSeparator() + "</td>" + System.lineSeparator()
-                            + "<td style=\"width:76%\" class=\"" + type + "\">" + sqlCompatibility.getSql()
+                            + "<td style=\"width:59%\" class=\"" + type + "\">" + sqlCompatibility.getSql()
                             + System.lineSeparator() + "</td>" + System.lineSeparator()
-                            + "<td class=\"" + type + "\" align=\"left\" >"
+                            + "<td style=\"width:4%\" class=\"" + type + "\" align=\"left\" >"
                             + getCompatibilityString(sqlCompatibility.getCompatibilityType()) + "</td>"
                             + System.lineSeparator()
-                            + "<td class=\"" + type + "_err\" align=\"left\" >" + sqlCompatibility.getErrDetail()
-                            + "</td>" + System.lineSeparator() + "</tr>" + System.lineSeparator();
+                            + "<td style=\"width:20%\" class=\"" + type + "_err\" align=\"left\" >"
+                            + sqlCompatibility.getErrDetail();
+
+                    if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
+                        sqlDetail += "<td style=\"width:15%\" class=\"" + type + "\" align=\"center\">"
+                                + sqlCompatibility.getId();
+                    }
+                    sqlDetail += "</td>" + System.lineSeparator() + "</tr>" + System.lineSeparator();
                     bufferedWriter.write(sqlDetail);
                     index++;
                 }

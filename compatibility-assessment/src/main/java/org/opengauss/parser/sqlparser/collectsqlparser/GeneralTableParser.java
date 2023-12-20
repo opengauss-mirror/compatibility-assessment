@@ -28,7 +28,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,13 +41,18 @@ import java.util.Map;
  */
 public class GeneralTableParser extends CollectSqlParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(GeneralTableParser.class);
-    private static final String COMMAND_QUERY = "Query";
     private static final String COMMAND_CONNECT = "Connect";
     private static final String COMMAND_INITDB = "Init DB";
-    private static final String OUTPUTFILE = "collect_general.sql";
+    private static final String OUTPUTFILE = "collect_general";
     private static final String SELECT_GENERALSQL = "select thread_id, command_type, argument from mysql.general_log";
     private static final Integer ARGUMENT_SPLITNUM = 5;
     private static final Integer DBINDEX_IN_ARGUMENT = 2;
+    private static final List<String> COMMAND_LIST = new ArrayList<>() {
+        {
+            add("Query");
+            add("Execute");
+        }
+    };
 
     /**
      * parse sql from mysql.general_log, need specify dbname
@@ -89,13 +96,8 @@ public class GeneralTableParser extends CollectSqlParser {
                                     Map<String, String> threadidToDb, StringBuilder builder) {
         if (threadidToDb.get(threadId) != null
                 && threadidToDb.get(threadId).equals(dbname)) {
-            if (commandType.equals(COMMAND_QUERY)) {
-                if (SqlParseController.isNeedFormat(argument)) {
-                    builder.append(SqlParseController.format(argument));
-                } else {
-                    builder.append(argument.replaceAll(SqlParseController.REPLACEBLANK, " ")
-                            + ";" + System.lineSeparator());
-                }
+            if (COMMAND_LIST.contains(commandType)) {
+                SqlParseController.appendJsonLine(builder, null, argument);
             }
         }
     }

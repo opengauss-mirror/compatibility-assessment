@@ -61,6 +61,7 @@ public class CompatibilityAssessmenter {
         }
 
         if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("input file number is : " + AssessmentInfoManager.getInstance().getInputFileCount());
             LOGGER.info("output sqlfile number is : " + AssessmentInfoManager.getInstance().getOutputSqlFileCount());
         }
     }
@@ -85,7 +86,7 @@ public class CompatibilityAssessmenter {
         try {
             future.get();
         } catch (InterruptedException | ExecutionException e) {
-            LOGGER.error("sqlPAssessment thread occur Exception, exit. exception ", e);
+            LOGGER.error("sqlAssessment thread occur Exception, exit. exception ", e);
             threadPoolExecutor.shutdownNow();
         }
 

@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.BufferedWriter;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.Locale;
 
 /**
  * Description: parse sql statement from sql file
@@ -33,9 +34,9 @@ import java.io.IOException;
  */
 public class SqlFileParser extends FileInputSqlParser {
     /**
-     * sql file suffix
+     * delimiter
      */
-    public static final String SQLFILE_SUFFIX = ".sql";
+    public static final String DELIMITER = "DELIMITER";
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlFileParser.class);
 
     private File file;
@@ -74,7 +75,6 @@ public class SqlFileParser extends FileInputSqlParser {
      * @param file File
      */
     protected void parseSql(File file) {
-        String line = "";
         StringBuilder builder = new StringBuilder();
         File newFile = getOutputFile(file, outputDir, FileInputSqlParser.SQL_CODE);
         if (!FilesOperation.isCreateOutputFile(newFile, outputDir)) {
@@ -82,13 +82,60 @@ public class SqlFileParser extends FileInputSqlParser {
         }
         try (BufferedReader bufReader = FilesOperation.getBufferedReader(file);
              BufferedWriter bufWriter = FilesOperation.getBufferedWriter(newFile, false)) {
-            while ((line = bufReader.readLine()) != null) {
-                builder.append(line + System.lineSeparator());
-            }
+            extractSql(bufReader, builder);
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
             handleFileLockWhenExp(newFile.getName());
             LOGGER.error("parsing sql file occur IOException. file: " + file.getName());
+        }
+    }
+
+    private void extractSql(BufferedReader bufferedReader, StringBuilder builder) throws IOException {
+        int pos = 1;
+        int sqlLineNums = 0;
+        String sqlLine;
+        String delimiter = ";";
+        StringBuffer buffer = new StringBuffer();
+        boolean isDelimiter = false;
+        while ((sqlLine = bufferedReader.readLine()) != null) {
+            sqlLine = sqlLine.trim();
+
+            if (sqlLine.equals("") || sqlLine.startsWith("--")) {
+                if (buffer.length() == 0) {
+                    pos++;
+                } else {
+                    sqlLineNums++;
+                }
+                continue;
+            }
+
+            /* The delimiter keyword has been read, but no delimiters were obtained */
+            if (isDelimiter) {
+                isDelimiter = false;
+                delimiter = sqlLine.replace(delimiter, "").trim();
+                pos++;
+                /* read delimiter keyword */
+            } else if (sqlLine.toUpperCase(Locale.ROOT).startsWith(DELIMITER)) {
+                sqlLine = sqlLine.toUpperCase(Locale.ROOT).replace(DELIMITER, "")
+                        .replace(delimiter, "").trim();
+                /* no delimiters were obtained */
+                if (sqlLine.equals("")) {
+                    isDelimiter = true;
+                } else {
+                    delimiter = sqlLine;
+                }
+                pos++;
+            } else if (!sqlLine.endsWith(delimiter)) {
+                buffer.append(sqlLine);
+                buffer.append(" ");
+                sqlLineNums++;
+            } else {
+                buffer.append(sqlLine.substring(0, sqlLine.length() - delimiter.length()));
+                SqlParseController.appendJsonLine(builder, pos, buffer.toString());
+                buffer.setLength(0);
+                pos += sqlLineNums + 1;
+                sqlLineNums = 0;
+            }
         }
     }
 }

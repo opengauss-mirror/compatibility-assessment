@@ -22,6 +22,7 @@ package org.opengauss.assessment.dao;
  * @since : 2023/7/7
  */
 public class SQLCompatibility {
+    private String id = "";
     private int line;
     private String sql;
     private AssessmentType sqlType;
@@ -31,19 +32,29 @@ public class SQLCompatibility {
     /**
      * Construct
      *
+     * @param id                : origin position.
      * @param line              : sql line.
      * @param sql               : sql.
      * @param sqlType           : sql type.
      * @param compatibilityType : assessment result type.
      * @param errDetail         : error information.
      */
-    public SQLCompatibility(int line, String sql, AssessmentType sqlType, CompatibilityType compatibilityType,
-                            String errDetail) {
+    public SQLCompatibility(String id, int line, String sql, AssessmentType sqlType,
+                            CompatibilityType compatibilityType, String errDetail) {
+        this.id = id;
         this.line = line;
         this.sql = sql;
         this.sqlType = sqlType;
         this.compatibilityType = compatibilityType;
         this.errDetail = errDetail;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public int getLine() {

@@ -25,6 +25,8 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -41,9 +43,16 @@ public class GeneralLogParser extends FileInputSqlParser {
     private static final Integer ARGUMENT_INDEX = 2;
     private static final Integer COMMAND_SUBINDEX = 1;
     private static final Integer IDCOMMAND_COL_NUM = 2;
-    private static final String COMMAND_QUERY = "Query";
+    private static final List<String> COMMAND_LIST = new ArrayList<>() {
+        {
+            add("Query");
+            add("Execute");
+        }
+    };
 
     private File file;
+    private int pos = 1;
+    private int sqlFileNums = 0;
 
     /**
      * Constructor
@@ -100,36 +109,45 @@ public class GeneralLogParser extends FileInputSqlParser {
                 } else {
                     if (!("".equals(completeSql))) {
                         completeSql = completeSql.trim() + " " + line;
+                        sqlFileNums++;
+                    } else {
+                        pos++;
                     }
                 }
             }
+
+            writeLastRecord(completeSql, builder);
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException exp) {
             handleFileLockWhenExp(newFile.getName());
-            LOGGER.error("parse general log occur IOException. filename: " + file.getName());
+            LOGGER.error("parse general log occur IOException. filename: " + file.getName(), exp);
         }
     }
 
-    private String writeAndUpdateSql(String line, final String sql, StringBuilder builder) {
+    private String writeAndUpdateSql(String line, String sql, StringBuilder builder) {
         String completeSql = sql;
         String[] lineElems = line.split("\t");
         String commandType = lineElems[IDCOMMAND_INDEX].trim().split(" ", IDCOMMAND_COL_NUM)[COMMAND_SUBINDEX];
-        if (commandType.equals(COMMAND_QUERY)) {
+        if (COMMAND_LIST.contains(commandType)) {
             if (!("".equals(completeSql))) {
-                if (SqlParseController.isNeedFormat(completeSql)) {
-                    completeSql = SqlParseController.format(completeSql);
-                    builder.append(completeSql);
-                } else {
-                    builder.append(completeSql.replaceAll(SqlParseController.REPLACEBLANK, " ")
-                            + ";" + System.lineSeparator());
-                }
+                SqlParseController.appendJsonLine(builder, pos, completeSql);
+                pos += sqlFileNums;
             }
+            sqlFileNums = 1;
             completeSql = lineElems[ARGUMENT_INDEX];
+        } else {
+            sqlFileNums++;
         }
         return completeSql;
     }
 
     private static boolean isNewRecordLine(String line) {
         return PATTERN.matcher(line).find();
+    }
+
+    private void writeLastRecord(String sql, StringBuilder builder) {
+        if (!("".equals(sql))) {
+            SqlParseController.appendJsonLine(builder, pos, sql);
+        }
     }
 }
