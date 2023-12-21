@@ -33,6 +33,8 @@
         <jsch.version>0.2.9</jsch.version>
         <opengauss-jdbc.version>3.1.1-og</opengauss-jdbc.version>
         <mybatis.version>3.5.13-modified</mybatis.version>
+        <fastjson.version>1.2.83</fastjson.version>
+        <jsqlparser.version>4.3</jsqlparser.version>
     </properties>
 
     <repositories>
@@ -149,6 +151,16 @@
             <groupId>org.mybatis</groupId>
             <artifactId>mybatis</artifactId>
             <version>${mybatis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>${fastjson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>${jsqlparser.version}</version>
         </dependency>
     </dependencies>
 </project>

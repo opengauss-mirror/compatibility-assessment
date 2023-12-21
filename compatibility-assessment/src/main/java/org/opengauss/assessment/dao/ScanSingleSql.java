@@ -23,16 +23,19 @@ package org.opengauss.assessment.dao;
  */
 public class ScanSingleSql {
     private String sql;
+    private String id;
     private int line;
 
     /**
      * Construct
      *
      * @param sql : sql.
+     * @param id : origin position.
      * @param line : sql line.
      */
-    public ScanSingleSql(String sql, int line) {
+    public ScanSingleSql(String sql, String id, int line) {
         this.sql = sql;
+        this.id = id;
         this.line = line;
     }
 
@@ -50,5 +53,13 @@ public class ScanSingleSql {
 
     public void setLine(int line) {
         this.line = line;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

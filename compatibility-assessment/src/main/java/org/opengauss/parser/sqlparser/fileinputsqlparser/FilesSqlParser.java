@@ -15,6 +15,7 @@
 
 package org.opengauss.parser.sqlparser.fileinputsqlparser;
 
+import org.apache.ibatis.scripting.xmltags.StrategyChoice;
 import org.opengauss.parser.sqlparser.SqlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +73,22 @@ public class FilesSqlParser implements SqlParser {
         for (File slowLog : slowlogs) {
             poolExecutor.execute(new SlowLogParser(slowLog));
         }
+        for (File mapper : mappers) {
+            poolExecutor.execute(new MapperParser(mapper));
+        }
+        poolExecutor.shutdown();
+
+        while (!poolExecutor.isTerminated()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException exp) {
+                LOGGER.error("wait for the first sql extract occur InterruptedException.");
+            }
+        }
+
+        poolExecutor = new ThreadPoolExecutor(Math.min(mappers.size() + 1, MAX_THREAD_NUM), MAX_THREAD_NUM,
+                0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        StrategyChoice.setStrategy(StrategyChoice.STATEGY_JUDGE_KEYWORD);
         for (File mapper : mappers) {
             poolExecutor.execute(new MapperParser(mapper));
         }

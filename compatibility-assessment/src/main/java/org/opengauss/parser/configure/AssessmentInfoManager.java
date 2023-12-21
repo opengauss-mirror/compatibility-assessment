@@ -38,6 +38,7 @@ public class AssessmentInfoManager implements ConfigureInfoManager {
     private static Properties props;
 
     private int outputSqlFileCount = 0;
+    private int inputFileCount = 0;
     private boolean canStartAssessment = false;
 
     private AssessmentInfoManager() {
@@ -107,6 +108,19 @@ public class AssessmentInfoManager implements ConfigureInfoManager {
 
     public void setOutputSqlFileCount(int outputSqlFileCount) {
         this.outputSqlFileCount = outputSqlFileCount;
+    }
+
+    public void setinputFileCount(int inputFileCount) {
+        this.inputFileCount = inputFileCount;
+    }
+
+    /**
+     * get input count
+     *
+     * @return int
+     */
+    public int getInputFileCount() {
+        return this.inputFileCount;
     }
 
     public void setAssessmentFlag(boolean canStartAssessment) {

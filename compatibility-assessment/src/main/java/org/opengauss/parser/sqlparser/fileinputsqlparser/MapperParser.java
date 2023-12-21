@@ -112,19 +112,17 @@ public class MapperParser extends FileInputSqlParser {
                 SqlSource sqlSource = mappedStatement.getSqlSource();
                 BoundSql boundSql = sqlSource.getBoundSql(null);
                 String sql = boundSql.getSql();
-                if (SqlParseController.isNeedFormat(sql)) {
-                    builder.append(SqlParseController.format(sql));
-                } else {
-                    String formatSql = sql.replaceAll(SqlParseController.DELICRLF, ";").trim();
-                    builder.append(formatSql.endsWith(";") ? formatSql + System.lineSeparator()
-                            : formatSql + ';' + System.lineSeparator());
-                }
+                SqlParseController.appendJsonLine(builder, id.substring(id.lastIndexOf('.') + 1), sql);
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
-        } catch (IOException | BuilderException | NullPointerException exp) {
+        } catch (IOException | BuilderException exp) {
             handleFileLockWhenExp(newFile.getName());
-            LOGGER.error("create mapper file inputstream occur IOException or BuilderException"
-                    + " or NullPointerException. filename: " + file.getName());
+            LOGGER.error("create mapper file inputstream occur IOException or BuilderException. filename: "
+                    + file.getName());
+        } catch (NullPointerException exp) {
+            handleFileLockWhenExp(newFile.getName());
+            LOGGER.error("create mapper file occur NullPointerException. filename: "
+                    + file.getName());
         }
     }
 }

@@ -236,12 +236,13 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/
  }
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-11-30 14:22:18.072538216 +0800
-@@ -15,20 +15,86 @@
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-12-21 14:32:39.603818220 +0800
+@@ -15,11 +15,57 @@
   */
  package org.apache.ibatis.scripting.xmltags;
  
 +import java.util.Arrays;
++import java.util.Iterator;
 +import java.util.List;
 +import java.util.StringJoiner;
 +import java.util.regex.Pattern;
@@ -251,89 +252,175 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
   */
  public class StaticTextSqlNode implements SqlNode {
 -  private final String text;
++  private static final List<String> concateList = Arrays.asList("AND", "OR", "IN", "NOT\\s+IN", "LIKE", "LIMIT", "BETWEEN",
++          "ORDER\\s+BY", "GROUP\\s+BY", "HAVING", "JOIN", "LEFT\\s+JOIN", "RIGHT\\s+JOIN", "INNER\\s+JOIN", "WHERE",
++          "VALUES", ",", "SELECT", "INSERT", "UPDATE", "DROP", "DELETE", "FROM", "SET", "INTO", "WHEN", "CASE", "END",
++          "DISTINCT", "=", ">=", "<=", ">", "<");
++  private static final StringJoiner sqlBuilder = new StringJoiner(" ");
++
++  private static final String SET_REG = "^update\\s+\\S+\\s+set";
++  private static final String ORDERBY_TAIL_REG = "order\\s+by\\s+\\S+(\\s+\\S+)?$";
++  private static final String ORDERBY_HEAD_REG = "^order\\s+by";
++  private static final String ORDERBY_FRAGMENT_REG = "^order\\s+by\\s+\\S+\\s+\\S+?$";
++  private static final String HEAD_REG;
++  private static final String TAIL_REG;
++  private static final Pattern PATTERN_HEAD_REG;
++  private static final Pattern PATTERN_TAIL_REG;
++  private static final Pattern PATTERN_SET_REG = Pattern.compile(SET_REG, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_ORDERBY_TAILREG = Pattern.compile(ORDERBY_TAIL_REG, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_ORDERBY_HEADREG = Pattern.compile(ORDERBY_HEAD_REG, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_ORDERBY_FRAGMENTREG = Pattern.compile(ORDERBY_FRAGMENT_REG, Pattern.CASE_INSENSITIVE);
++
++  static {
++    StringBuilder headbuilder = new StringBuilder();
++    StringBuilder tailbuilder = new StringBuilder();
++    Iterator var2 = concateList.iterator();
++
++    while(var2.hasNext()) {
++      String keyword = (String)var2.next();
++      if (!",".equals(keyword)) {
++        headbuilder.append("|^" + keyword + "\\s+|^" + keyword + "$");
++        tailbuilder.append("|\\s+" + keyword + "$|^" + keyword + "$");
++      }
++    }
++
++    HEAD_REG = headbuilder.toString().substring(1);
++    TAIL_REG = tailbuilder.toString().substring(1);
++    PATTERN_HEAD_REG = Pattern.compile(HEAD_REG, Pattern.CASE_INSENSITIVE);
++    PATTERN_TAIL_REG = Pattern.compile(TAIL_REG, Pattern.CASE_INSENSITIVE);
++  }
++
++
++
++  private String text;
  
--  public StaticTextSqlNode(String text) {
--    this.text = text;
--  }
--
--  @Override
--  public boolean apply(DynamicContext context) {
+   public StaticTextSqlNode(String text) {
+     this.text = text;
+@@ -27,8 +73,87 @@
+ 
+   @Override
+   public boolean apply(DynamicContext context) {
 -    context.appendSql(text);
 -    return true;
--  }
-+    private static final List<String> concateList = Arrays.asList("AND", "OR", "IN", "NOT IN", "LIKE", "LIMIT", "BETWEEN",
-+            "ORDER BY", "GROUP BY", "HAVING", "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "WHERE", "VALUES", ",",
-+            "SELECT", "INSERT", "UPDATE", "DROP", "DELETE", "FROM", "SET", "INTO", "WHEN", "CASE", "END", "DISTINCT");
-+
-+    private final String text;
-+
-+    public StaticTextSqlNode(String text) {
-+        this.text = text;
-+    }
-+
-+    @Override
-+    public boolean apply(DynamicContext context) {
-+        if (isConcateSql(context)) {
-+            context.appendSql(text);
-+            return true;
-+        }
-+        return false;
-+    }
-+
-+    private boolean isConcateSql(DynamicContext context) {
-+        String sql_fragment = context.getInnerSql().toUpperCase();
-+        if (sql_fragment.length() == 0 || text.trim().length() == 0) {
-+            return true;
-+        }
-+        boolean endWithKeyword = false;
-+        boolean startWithKeyword = false;
-+        for (String keyword : concateList) {
-+            if (startWithKeyword && endWithKeyword) break;
-+            if (!endWithKeyword && sql_fragment.endsWith(keyword)) {
-+                endWithKeyword = true;
-+            }
-+            if (!startWithKeyword && text.toUpperCase().trim().startsWith(keyword)) {
-+                startWithKeyword = true;
-+            }
-+        }
-+
-+        if (!handleTheSame(startWithKeyword, endWithKeyword, sql_fragment)) {
-+            return false;
-+        }
-+        if (!handleOrderBy(context)) {
-+            return false;
-+        }
-+
++    dealOrderByFragment();
++    if (StrategyChoice.getStrategy() == StrategyChoice.STATEGY_CONCAT_DIRECT) {
++      context.appendSql(text);
++      return true;
++    } else if(StrategyChoice.getStrategy() == StrategyChoice.STATEGY_JUDGE_KEYWORD) {
++      if (isConcateSql(context)) {
++        context.appendSql(text);
 +        return true;
++      }
++    }
++    return false;
++  }
++
++  private boolean isConcateSql(DynamicContext context) {
++    String sql_fragment = context.getInnerSql().toUpperCase();
++    if (sql_fragment.length() == 0) {
++      return true;
++    } else {
++      boolean startWithKeyword = PATTERN_HEAD_REG.matcher(this.text.trim()).find() || this.text.trim().startsWith(",");
++      boolean endWithKeyword = PATTERN_TAIL_REG.matcher(sql_fragment).find() || sql_fragment.endsWith(",");
++      if (startWithKeyword == endWithKeyword) {
++        return this.handleTheSame(startWithKeyword, endWithKeyword, sql_fragment);
++      } else {
++        return this.handleMultiKey(context);
++      }
++    }
++  }
++
++  private boolean handleTheSame(boolean startWithKeyword, boolean endWithKeyword, String sql_fragment) {
++    if (!startWithKeyword && !endWithKeyword) {
++      if (sql_fragment.endsWith(")") && this.text.trim().startsWith("(")) {
++        return false;
++      }
++
++      if (sql_fragment.endsWith("(") || this.text.trim().startsWith("(") || this.text.trim().startsWith(")")) {
++        return true;
++      }
 +    }
 +
-+    private boolean handleTheSame(boolean startWithKeyword, boolean endWithKeyword, String sql_fragment) {
-+	if (startWithKeyword != endWithKeyword) return true;
-+        if (!startWithKeyword && !endWithKeyword && (sql_fragment.endsWith("(") || text.trim().startsWith("("))) {
-+            return true;
-+        }
-+        if (startWithKeyword && endWithKeyword) {
-+            if (sql_fragment.endsWith("INSERT") && text.trim().toUpperCase().startsWith("INTO")) {
-+                return true;
-+            }
-+            if (sql_fragment.endsWith("DELETE") && text.trim().toUpperCase().startsWith("FROM")) {
-+                return true;
-+            }
-+            if (sql_fragment.endsWith("SELECT") && text.trim().toUpperCase().startsWith("DISTINCT")) {
-+                return  true;
-+            }
-+        }
-+        return false;
++    String text_upper = this.text.toUpperCase().trim();
++    if (startWithKeyword && endWithKeyword) {
++      if (sql_fragment.endsWith("INSERT") && text_upper.startsWith("INTO")) {
++        return true;
++      }
++
++      if (sql_fragment.endsWith("DELETE") && text_upper.startsWith("FROM")) {
++        return true;
++      }
++
++      if (sql_fragment.endsWith("SELECT") && text_upper.startsWith("DISTINCT")) {
++        return true;
++      }
++
++      if (sql_fragment.endsWith("END") && text_upper.startsWith("WHERE")) {
++        return true;
++      }
 +    }
++
++    return false;
++  }
++
++  private boolean handleMultiKey(DynamicContext context) {
++    String sql_fragment = context.getInnerSql().toUpperCase();
++    String text_upper = this.text.toUpperCase().trim();
++    if (PATTERN_ORDERBY_TAILREG.matcher(sql_fragment).find() && PATTERN_ORDERBY_HEADREG.matcher(text_upper).find()) {
++      return false;
++    } else {
++      return !PATTERN_SET_REG.matcher(sql_fragment).find() || !text_upper.startsWith("SET ");
++    }
++  }
++
++  private void dealOrderByFragment() {
++    if (PATTERN_ORDERBY_FRAGMENTREG.matcher(this.text.trim()).find()) {
++      String[] sqlArr = this.text.trim().split("\\s+");
++      if (!(sqlArr[3].toUpperCase().startsWith("DESC") || (sqlArr[3].toUpperCase().startsWith("ASC")))
++              && !sqlArr[2].endsWith(",") && !concateList.contains(sqlArr[3].toUpperCase())) {
++        this.text = this.text.replaceAll(sqlArr[3], "ASC");
++      }
++    }
+   }
  
-+    private boolean handleOrderBy(DynamicContext context) {
-+        String sql_fragment = context.getInnerSql().toUpperCase();
-+        if (sql_fragment.indexOf("ORDER BY") != -1 && text.toUpperCase().trim().indexOf("ORDER BY") != -1) {
-+            return false;
-+        }
-+        return true;
-+    }
  }
++
++
+diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java b/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java
+--- a/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java	1970-01-01 08:00:00.000000000 +0800
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java	2023-12-09 18:54:50.273824772 +0800
+@@ -0,0 +1,31 @@
++/*
++ *    Copyright 2009-2023 the original author or authors.
++ *
++ *    Licensed under the Apache License, Version 2.0 (the "License");
++ *    you may not use this file except in compliance with the License.
++ *    You may obtain a copy of the License at
++ *
++ *       https://www.apache.org/licenses/LICENSE-2.0
++ *
++ *    Unless required by applicable law or agreed to in writing, software
++ *    distributed under the License is distributed on an "AS IS" BASIS,
++ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ *    See the License for the specific language governing permissions and
++ *    limitations under the License.
++ */
++package org.apache.ibatis.scripting.xmltags;
++
++
++public class StrategyChoice {
++    public static final Integer STATEGY_JUDGE_KEYWORD = 1;
++    public static final Integer STATEGY_CONCAT_DIRECT = 0;
++    private static Integer strategyChoice = STATEGY_CONCAT_DIRECT;
++
++    public static Integer getStrategy() {
++        return strategyChoice;
++    }
++
++    public static void setStrategy(Integer strate) {
++        strategyChoice = strate;
++    }
++}
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java	2023-07-21 14:59:18.357889106 +0800
 +++ b/src/main/java/org/apache/ibatis/scripting/xmltags/TrimSqlNode.java	2023-11-24 15:51:05.874000568 +0800

@@ -22,5 +22,29 @@ package org.opengauss.assessment.dao;
  * @since : 2023/7/7
  */
 public enum CompatibilityType {
-    COMPATIBLE, AST_COMPATIBLE, INCOMPATIBLE, UNSUPPORTED_COMPATIBLE, SKIP_COMMAND
+    COMPATIBLE, AST_COMPATIBLE, INCOMPATIBLE, UNSUPPORTED_COMPATIBLE, SKIP_COMMAND;
+
+    /**
+     * judge compatible
+     *
+     * @param sqlCompatibility : record assessment information.
+     * @return boolean
+     */
+    public static boolean isCompatible(SQLCompatibility sqlCompatibility) {
+        CompatibilityType compatibilityType = sqlCompatibility.getCompatibilityType();
+        return compatibilityType == COMPATIBLE || compatibilityType == AST_COMPATIBLE;
+    }
+
+    /**
+     * judge incompatible
+     *
+     * @param sqlCompatibility : record assessment information.
+     * @return boolean
+     */
+    public static boolean isIncompatible(SQLCompatibility sqlCompatibility) {
+        CompatibilityType compatibilityType = sqlCompatibility.getCompatibilityType();
+        return compatibilityType == INCOMPATIBLE
+                || compatibilityType == UNSUPPORTED_COMPATIBLE
+                || compatibilityType == SKIP_COMMAND;
+    }
 }

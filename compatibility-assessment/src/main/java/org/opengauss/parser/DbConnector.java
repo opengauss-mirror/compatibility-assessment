@@ -56,7 +56,7 @@ public class DbConnector {
         try {
             connection = DriverManager.getConnection(url, user, password);
         } catch (SQLException exp) {
-            LOGGER.error("getMysqlConnection failed!", exp.getMessage());
+            LOGGER.error("getMysqlConnection failed! exp message: " + exp.getMessage());
         }
         return connection;
     }
