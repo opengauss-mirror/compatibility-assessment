@@ -174,7 +174,7 @@ public class JschUtil {
             // Add the names of .sql and .txt files to the list
             for (ChannelSftp.LsEntry entry : entries) {
                 String filename = entry.getFilename();
-                if (filename.endsWith(".sql") || filename.endsWith(".txt")) {
+                if (filename.endsWith(".json")) {
                     fileNames.add(filename);
                 }
             }
@@ -254,7 +254,7 @@ public class JschUtil {
         InputStream attachStream = JschUtil.class.getClassLoader()
                 .getResourceAsStream(Constant.INSERTION_ATTACHNAME_PATH);
         map.put(Constant.INSERTION_ATTACHNAME, attachStream);
-        upload(session, Constant.INSERTION_UPLOADPATH, map);
+        upload(session, LinuxConfig.getFilePath(), map);
         log.info("<------------------------------------------------------------->");
         log.info("Start executing the pile insertion start command--->{}", command);
         String res = executeCommand(session, command);

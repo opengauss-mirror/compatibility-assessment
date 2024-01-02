@@ -21,6 +21,7 @@ public class LinuxConfig {
     private static String userName;
     private static String linuxSecret;
     private static String pid;
+    private static String filePath;
 
     public static String getHost() {
         return host;
@@ -60,5 +61,13 @@ public class LinuxConfig {
 
     public void setPid(String pid) {
         this.pid = pid;
+    }
+
+    public static String getFilePath() {
+        return filePath;
+    }
+
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
     }
 }

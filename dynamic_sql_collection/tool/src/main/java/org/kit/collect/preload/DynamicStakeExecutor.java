@@ -17,7 +17,6 @@ import org.kit.collect.domain.Regular;
 import org.kit.collect.domain.RegularTask;
 import org.kit.collect.service.impl.HeartbeatJob;
 import org.kit.collect.service.impl.PileInsertionJob;
-import org.kit.collect.utils.DateUtil;
 import org.kit.collect.utils.JschUtil;
 import org.kit.collect.utils.SchedulerUtil;
 import org.kit.collect.utils.cron.CronUtil;
@@ -54,17 +53,13 @@ public class DynamicStakeExecutor {
         Session session = JschUtil.obtainSession();
         // Check and create collection.sql if necessary  Check and create stack.txt if necessary
         String pid = LinuxConfig.getPid();
-        String suffix = Constant.CHECK_SUFFIX
-                .replace(Constant.INSERTION_SQL, DateUtil.getDate() + Constant.INSERTION_SQL)
-                .replace(Constant.INSERTION_STACK, DateUtil.getDate() + Constant.INSERTION_STACK);
-        String create = Constant.CHECK_PREFIX + pid + suffix;
+        String path = LinuxConfig.getFilePath();
+        String create = String.format(Constant.CHECK, pid, path, path, path);
         if (JschUtil.executeCommand(session, create).contains("not")) {
             log.error("Process with pid " + pid + " does not exist");
         }
         if (Regular.isNeverStop) {
-            String command = Constant.COMMAND
-                    .replace("pid", pid)
-                    .replace("false", "true").replace("time", "3");
+            String command = String.format(Constant.COMMAND, path, pid, path, "true", 3, path);
             JschUtil.executeTask(command, JschUtil.obtainSession());
         } else {
             SchedulerFactory schedulerFactory = new StdSchedulerFactory();
