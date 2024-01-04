@@ -42,5 +42,5 @@ linux:
     port: 22               #linux 端口号
     userName: root         #linux 用户名
     linuxSecret: Huawei@123   #linux 登录密码
-    pid: 12813                # 插桩进程 pid
+    pid: 15937                # 插桩进程 pid
     filePath: /qwe/test002/      # 采集的sql生成的文件路径
