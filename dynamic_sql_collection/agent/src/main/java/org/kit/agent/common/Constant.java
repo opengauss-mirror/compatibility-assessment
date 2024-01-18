@@ -5,22 +5,24 @@
 package org.kit.agent.common;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.kit.agent.SqlAgent;
 import org.kit.agent.utils.DataUtil;
 
 /**
@@ -97,10 +99,12 @@ public class Constant {
      */
     public static final List<String> PRECLASSNAME = List.of(
             PRE_MYSQL8, PRE_MYSQL5, PRE_SQLSERVER, PRE_OPENGAUSS, PRE_ORACLE);
+
     private static final String NEWLINE = StrUtil.LF;
-    private static final String SQL_NAME = "collection.sql";
-    private static final String STACK_NAME = "stack.txt";
-    private static final String PATH = "/kit/file/";
+    private static final String STACK_NAME = "collect";
+    private static int sqlNumber = 1;
+    private static int txtNumber = 1;
+    private static List<String> sqls = new ArrayList<>();
 
     /**
      * sqlRecord
@@ -109,18 +113,7 @@ public class Constant {
      * @param query     query
      */
     public static void sqlRecord(String className, String query) {
-        String sqlPath = PATH + DataUtil.getDate() + SQL_NAME;
-        createFile(sqlPath);
-        String str = query;
-        if (str.contains("PreparedStatement")) {
-            str = str.substring(str.indexOf(":") + 1);
-        }
-        str = dealQuery(str);
-        if (isSqlRepeat(str, sqlPath)) {
-            return;
-        }
-        log.info(DataUtil.getTimeNow() + " start recording sql statements");
-        writeStringToFile(str, sqlPath);
+        String sqlPath = SqlAgent.path + sqlNumber + "_" + DataUtil.getDate();
     }
 
     /**
@@ -130,25 +123,30 @@ public class Constant {
      * @param stackTrace stackTrace
      */
     public static void stakeRecord(String sql, StackTraceElement[] stackTrace) {
-        String stackPath = PATH + DataUtil.getDate() + STACK_NAME;
+        log.info(DataUtil.getTimeNow() + " start recording sql and stack information");
+        String stackPath = SqlAgent.path + txtNumber + "_" + DataUtil.getDate() + STACK_NAME;
         createFile(stackPath);
         String str = sql;
-        if (str.contains("PreparedStatement")) {
+        if (str.contains("com.mysql")) {
             str = str.substring(str.indexOf(":") + 1);
         }
         str = dealQuery(str);
         StringBuilder sb = new StringBuilder();
-        sb.append("Sql: ").append(str).append(NEWLINE);
         sb.append("Stack Trace:" + NEWLINE);
         for (StackTraceElement element : stackTrace) {
             sb.append(element.toString()).append(NEWLINE);
         }
         String logMessage = sb.toString();
-        if (isStackRepeat(logMessage, stackPath)) {
+        String time = DataUtil.getTimeNow();
+        JSONObject json = JSONUtil.createObj()
+                .set("sql", str)
+                .set("pos", logMessage)
+                .set("time", time);
+        if (isStackRepeat(str, stackPath)) {
             return;
         }
-        log.info(DataUtil.getTimeNow() + " start recording call stack information");
-        writeStringToFile(logMessage, stackPath);
+        writeStringToFile(json.toString(), stackPath);
+        sqls.add(str);
     }
 
     private static String dealQuery(String query) {
@@ -187,6 +185,9 @@ public class Constant {
             if (!Files.exists(path)) {
                 return false;
             }
+            if (Files.size(path) > SqlAgent.fileSize) {
+                sqlNumber++;
+            }
             try (Stream<String> lines = Files.lines(path)) {
                 return lines.anyMatch(line -> line.equals(str));
             }
@@ -198,10 +199,12 @@ public class Constant {
 
     private static boolean isStackRepeat(String str, String filePath) {
         try (FileChannel channel = FileChannel.open(Paths.get(filePath), StandardOpenOption.READ)) {
-            long fileSize = channel.size();
-            MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
-            String fileContent = StandardCharsets.UTF_8.decode(buffer).toString();
-            if (fileContent.contains(str)) {
+            long size = channel.size();
+            // 添加以下代码
+            if (size > SqlAgent.fileSize) {
+                txtNumber++;
+            }
+            if (sqls.contains(str)) {
                 return true;
             }
         } catch (IOException e) {

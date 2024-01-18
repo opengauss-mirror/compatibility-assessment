@@ -24,9 +24,18 @@ import org.kit.agent.impl.StateFormer;
  */
 @Slf4j
 public class SqlAgent {
+    /**
+     * 文件写入路径
+     */
+    public static String path = "/kit/file/";
+
+    /**
+     * 文件大小阈值单位是字节，默认是10Mb
+     */
+    public static int fileSize = 10 * 1024 * 1024;
+
     private static final ClassFileTransformer STATEFORMER = new StateFormer();
     private static final ClassFileTransformer PREPAREDFORMER = new PreparedFormer();
-    private static Class[] loadedClasses = null;
     private static final List<String> names = Arrays.asList("com.mysql.cj.jdbc.StatementImpl",
             "com.mysql.jdbc.StatementImpl",
             "com.microsoft.sqlserver.jdbc.SQLServerStatement",
@@ -36,8 +45,7 @@ public class SqlAgent {
             "com.mysql.jdbc.PreparedStatement",
             "com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement",
             "org.postgresql.jdbc.PgPreparedStatement");
-
-    private ScheduledExecutorService executor;
+    private static Class[] loadedClasses = null;
 
     /**
      * agentmain
@@ -60,12 +68,8 @@ public class SqlAgent {
         boolean isNeverStop = false;
         long executionTime = 0L;
         TimeUnit unit = TimeUnit.MINUTES;
-        // 解析代理参数
         for (String param : params) {
             String[] keyValue = param.split("=");
-            if (keyValue.length != 2) {
-                return;
-            }
             String key = keyValue[0];
             String value = keyValue[1];
             if (key.equals("neverStop") && value.equalsIgnoreCase("true")) {
@@ -74,15 +78,18 @@ public class SqlAgent {
             if (key.equals("executionTime")) {
                 executionTime = Long.parseLong(value);
             }
+            if (key.equals("writePath")) {
+                path = value;
+            }
+            // 参数单位为Mb 需要转换为字节
+            if (key.equals("threshold")) {
+                fileSize = Integer.parseInt(value) * 1024 * 1024;
+            }
             if (key.equals("unit")) {
                 if (value.equalsIgnoreCase("seconds")) {
                     unit = TimeUnit.SECONDS;
                 } else if (value.equalsIgnoreCase("minutes")) {
                     unit = TimeUnit.MINUTES;
-                } else if (value.equalsIgnoreCase("hours")) {
-                    unit = TimeUnit.HOURS;
-                } else if (value.equalsIgnoreCase("days")) {
-                    unit = TimeUnit.DAYS;
                 } else {
                     log.info("nothing");
                 }
@@ -91,14 +98,14 @@ public class SqlAgent {
         if (isNeverStop) {
             return;
         }
-        SqlAgent sqlAgent = new SqlAgent();
-        sqlAgent.scheduleRemoveTransformers(inst, executionTime, unit);
+        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        scheduleRemoveTransformers(inst, executionTime, unit, executor);
         // 使用完毕后关闭线程池
-        sqlAgent.shutdownExecutor();
+        shutdownExecutor(executor);
     }
 
-    private void scheduleRemoveTransformers(Instrumentation inst, long executionTime, TimeUnit unit) {
-        executor = Executors.newSingleThreadScheduledExecutor();
+    private static void scheduleRemoveTransformers(Instrumentation inst, long executionTime, TimeUnit unit,
+                                                   ScheduledExecutorService executor) {
         executor.schedule(() -> {
             inst.removeTransformer(STATEFORMER);
             inst.removeTransformer(PREPAREDFORMER);
@@ -118,7 +125,7 @@ public class SqlAgent {
         }, executionTime, unit);
     }
 
-    private void shutdownExecutor() {
+    private static void shutdownExecutor(ScheduledExecutorService executor) {
         if (executor != null) {
             log.info("Close thread pool");
             executor.shutdown();
