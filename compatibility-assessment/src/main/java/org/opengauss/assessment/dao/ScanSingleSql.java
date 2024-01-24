@@ -25,6 +25,8 @@ public class ScanSingleSql {
     private String sql;
     private String id;
     private int line;
+    private String tag;
+    private String filename;
 
     /**
      * Construct
@@ -32,11 +34,15 @@ public class ScanSingleSql {
      * @param sql : sql.
      * @param id : origin position.
      * @param line : sql line.
+     * @param tag : xml tag.
+     * @param filename : origin input filename.
      */
-    public ScanSingleSql(String sql, String id, int line) {
+    public ScanSingleSql(String sql, String id, int line, String tag, String filename) {
         this.sql = sql;
         this.id = id;
         this.line = line;
+        this.tag = tag;
+        this.filename = filename;
     }
 
     public String getSql() {
@@ -61,5 +67,13 @@ public class ScanSingleSql {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    public String getFilename() {
+        return filename;
     }
 }

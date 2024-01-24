@@ -15,7 +15,9 @@
 
 package org.opengauss.assessment.dao;
 
+import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.fastjson.JSONObject;
+import javafx.util.Pair;
 import org.opengauss.parser.FileLocks;
 import org.opengauss.parser.FilesOperation;
 import org.opengauss.parser.command.Commander;
@@ -25,15 +27,22 @@ import org.opengauss.parser.sqlparser.SqlParseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserUtil;
-import net.sf.jsqlparser.statement.Statement;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.StringReader;
+import java.io.BufferedWriter;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -115,6 +124,7 @@ public class AssessmentEntry {
     private static final String DELIMITER = "delimiter";
     private static final String RESULT_DIR = System.getProperty("user.dir") + File.separator + "result";
     private static final String RESULTFILE_SUFFIX = ".result";
+    private static final String BLANKS = "\\t|( )+|\u3000";
 
     private static Map<String, String> suffixMap = new HashMap<>() {
         {
@@ -125,8 +135,16 @@ public class AssessmentEntry {
             put("-slow", ".slow");
         }
     };
+    private static int totalSql = 0;
 
-    private ArrayList<String> originFileList = new ArrayList<>();
+    /**
+     * assessment sql.
+     *
+     * @param number : int
+     */
+    public static void increTotalSql(int number) {
+        AssessmentEntry.totalSql += number;
+    }
 
     /**
      * assessment function.
@@ -166,6 +184,7 @@ public class AssessmentEntry {
             if (!compatibilityTable.generateReportEnd()) {
                 LOGGER.error(assessmentSettings.getOutputFile() + ": can not write to file \"" + pset.getProname() + "\"");
             }
+            LOGGER.info("total sql: {}", totalSql);
         } catch (SQLException e) {
             LOGGER.error("sql assessment occur SQLException! exception = " + e.getMessage());
         }
@@ -207,7 +226,6 @@ public class AssessmentEntry {
                                      Stream<Path> files, Connection connection) {
         files.parallel().forEachOrdered(inputPath -> {
             String fileName = inputPath.getFileName().toString();
-            String resultName = getOriginFilenameByInput(fileName);
             Map<String, ReentrantReadWriteLock> lockers = FileLocks.getLockers();
             if (lockers.containsKey(fileName)) {
                 ReentrantReadWriteLock.ReadLock readLock;
@@ -220,7 +238,7 @@ public class AssessmentEntry {
                 try {
                     Queue<ScanSingleSql> allSql = getSQL(inputPath);
                     int sqlSize = allSql.size();
-                    gramTest(sqlSize, allSql, compatibilityTable, connection, resultName);
+                    gramTest(sqlSize, allSql, compatibilityTable, connection, getOriginFilenameByInput(fileName));
                 } finally {
                     readLock.unlock();
                 }
@@ -230,7 +248,6 @@ public class AssessmentEntry {
 
     private String getOriginFilenameByInput(String inputFilename) {
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_COLLECT)) {
-            originFileList.add(inputFilename);
             return inputFilename + RESULTFILE_SUFFIX;
         }
 
@@ -239,7 +256,6 @@ public class AssessmentEntry {
             if (inputFilename.endsWith(middleSuffix)) {
                 String tempName = inputFilename.substring(0, inputFilename.length() - middleSuffix.length());
                 resultName = tempName + middleSuffix + RESULTFILE_SUFFIX;
-                originFileList.add(tempName + suffixMap.get(middleSuffix));
                 break;
             }
         }
@@ -284,10 +300,13 @@ public class AssessmentEntry {
         String jsonLine;
         int line = 1;
         while ((jsonLine = bufferedReader.readLine()) != null) {
-            String id = JSONObject.parseObject(jsonLine).getString(SqlParseController.KEY_ID);
-            String sql = JSONObject.parseObject(jsonLine).getString(SqlParseController.KEY_SQL)
-                    .replaceAll("\\s+", " ");
-            allSql.offer(new ScanSingleSql(sql.trim(), id, line++));
+            JSONObject jsonObject = JSONObject.parseObject(jsonLine);
+            String id = jsonObject.getString(SqlParseController.KEY_ID);
+            String sql = jsonObject.getString(SqlParseController.KEY_SQL)
+                    .replaceAll(BLANKS, " ");
+            String tag = jsonObject.getString(SqlParseController.KEY_TAG);
+            String filename = jsonObject.getString(SqlParseController.KEY_FILE);
+            allSql.offer(new ScanSingleSql(sql.trim(), id, line++, tag, filename));
         }
     }
 
@@ -349,61 +368,160 @@ public class AssessmentEntry {
      * @param compatibilityTable : record assessment information.
      * @param connection         : jdbc connection.
      */
-    private static void gramTestHelper(Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
-                                       Connection connection, String resultName) {
+    private void gramTestHelper(Queue<ScanSingleSql> allSql, CompatibilityTable compatibilityTable,
+                                Connection connection, String resultName) {
         ScanSingleSql scanSingleSql = allSql.poll();
         String sql = scanSingleSql.getSql();
         String str = translateExplainTblnameSql(sql);
         CompatibilityType compatibilityType = UNSUPPORTED_COMPATIBLE;
         String errorResult = "";
+        Pair<CompatibilityType, String> assessInfo = executeAssment(str, connection);
+        Pair<Boolean, String> filterInfo;
+        if (assessInfo.getKey() == INCOMPATIBLE) {
+            filterInfo = InCompatibilityFilter.filterIncompaSql(str, assessInfo.getValue());
+            while (filterInfo.getKey()) {
+                assessInfo = executeAssment(filterInfo.getValue(), connection);
+                if (assessInfo.getKey() != INCOMPATIBLE) {
+                    break;
+                }
+                filterInfo = InCompatibilityFilter.filterIncompaSql(filterInfo.getValue(), assessInfo.getValue());
+            }
+            str = filterInfo.getValue();
+            scanSingleSql.setSql(str);
+            assessInfo = executeAssment(str, connection);
+            compatibilityType = assessInfo.getKey();
+            errorResult = assessInfo.getValue();
+        } else {
+            compatibilityType = assessInfo.getKey();
+            errorResult = assessInfo.getValue();
+        }
+
+        if (compatibilityType == INCOMPATIBLE) {
+            errorResult = InCompatibilityFilter.filterKeyWord(errorResult);
+            if (!validateSQL(str) || !InCompatibilityFilter.filterErrorSql(str)) {
+                errorResult = "语法错误" + System.lineSeparator();
+            }
+            errorResult += getXmlContext(scanSingleSql.getTag(), scanSingleSql.getFilename(), scanSingleSql.getId());
+        }
+        writeResToFile(resultName, scanSingleSql, compatibilityType, errorResult);
+    }
+
+    private static Pair<CompatibilityType, String> executeAssment(String sql, Connection connection) {
+        CompatibilityType compaType = UNSUPPORTED_COMPATIBLE;
+        String errorResult = "";
         if (assessmentSettings.isPlugin()) {
-            String querySql = "ast " + str;
+            String querySql = "ast " + sql;
             try (PreparedStatement statement = connection.prepareStatement(querySql)) {
                 statement.execute();
-                compatibilityType = AST_COMPATIBLE;
+                compaType = AST_COMPATIBLE;
             } catch (SQLException e) {
                 commit(connection);
-                compatibilityType = INCOMPATIBLE;
+                compaType = INCOMPATIBLE;
                 errorResult = e.getMessage();
             }
         }
 
         AssessmentType assessmentType = UNSUPPORTED;
         try {
-            assessmentType = getAssessmentType(connection, str);
-            compatibilityType = AST_COMPATIBLE;
+            assessmentType = getAssessmentType(connection, sql);
+            compaType = AST_COMPATIBLE;
             errorResult = "";
         } catch (SQLException e) {
             commit(connection);
         }
-
-        if (compatibilityType == AST_COMPATIBLE) {
+        if (compaType == AST_COMPATIBLE) {
             if (assessmentType == COMMENT) {
-                compatibilityType = SKIP_COMMAND;
+                compaType = SKIP_COMMAND;
             } else {
-                try (PreparedStatement statement = connection.prepareStatement(str)) {
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     statement.execute();
-                    compatibilityType = COMPATIBLE;
+                    compaType = COMPATIBLE;
                 } catch (SQLException e) {
                     commit(connection);
                     errorResult = e.getMessage();
                 }
             }
         }
+        return new Pair<>(compaType, errorResult);
+    }
 
-        if (compatibilityType == INCOMPATIBLE && !validateSQL(str)) {
-            errorResult = "语法错误";
+    private String getXmlContext(String tag, String filename, String id) {
+        String context = "";
+        if (filename == null || !filename.endsWith(".xml")) {
+            return context;
         }
-        writeResToFile(resultName, scanSingleSql, compatibilityType, errorResult);
+
+        File file = new File(filename);
+        try (BufferedReader bufReader = new BufferedReader(new FileReader(file))) {
+            context = filterAndCheckXmlContext(bufReader, tag, id);
+            if (context.length() > 0) {
+                context = "<xmp>" + context + "</xmp>";
+            }
+        } catch (IOException exp) {
+            LOGGER.warn("get origin xml context failed, please check manually.");
+        }
+        return context;
+    }
+
+    private String filterAndCheckXmlContext(BufferedReader bufReader, String tag, String id) throws IOException {
+        String line;
+        String context = "";
+        boolean isFiltering = false;
+        String tagHeader = "<" + tag;
+        String tagTail = "</" + tag + ">";
+        while ((line = bufReader.readLine()) != null) {
+            String trimLine = line.trim();
+            if ((!trimLine.startsWith(tagHeader) || trimLine.startsWith("<selectKey")) && !isFiltering) {
+                continue;
+            }
+
+            if (trimLine.startsWith(tagHeader) && trimLine.endsWith(tagTail)) {
+                context += line + System.lineSeparator();
+                if (checkXmlContext(context, id)) {
+                    break;
+                }
+                context = "";
+                isFiltering = false;
+            } else if (trimLine.startsWith(tagHeader) && !trimLine.endsWith(tagTail)) {
+                isFiltering = true;
+                context += line + System.lineSeparator();
+            } else if (!trimLine.startsWith(tagHeader) && trimLine.endsWith(tagTail)) {
+                context += line + System.lineSeparator();
+                if (checkXmlContext(context, id)) {
+                    break;
+                }
+                context = "";
+                isFiltering = false;
+            } else {
+                context += line + System.lineSeparator();
+            }
+        }
+        return context;
+    }
+
+    private boolean checkXmlContext(String xmlContext, String id) {
+        try {
+            DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = builderFactory.newDocumentBuilder();
+            Document doc = builder.parse(new InputSource(new StringReader(xmlContext)));
+            Element element = doc.getDocumentElement();
+            if (element.hasAttribute("id") && element.getAttribute("id").equals(id)) {
+                return true;
+            }
+        } catch (SAXException | IOException | ParserConfigurationException exp) {
+            LOGGER.warn("check origin xml context id failed. id is " + id);
+        }
+        return false;
     }
 
     private static boolean validateSQL(String sql) {
+        MySqlStatementParser parser = new MySqlStatementParser(sql);
         try {
-            Statement stmt = CCJSqlParserUtil.parse(sql);
-            return true;
-        } catch (JSQLParserException e) {
+            parser.parseStatementList();
+        } catch (Exception exp) {
             return false;
         }
+        return true;
     }
 
     private void readResFromFile(CompatibilityTable table) {

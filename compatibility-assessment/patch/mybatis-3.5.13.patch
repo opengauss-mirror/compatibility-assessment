@@ -71,8 +71,8 @@ diff -Naur a/src/main/java/org/apache/ibatis/mapping/ResultMapping.java b/src/ma
  
 diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java
 --- a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-07-21 14:59:18.356889096 +0800
-+++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2023-11-10 15:59:43.318023221 +0800
-@@ -15,6 +15,11 @@
++++ b/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java	2024-01-17 11:27:52.314665527 +0800
+@@ -15,6 +15,12 @@
   */
  package org.apache.ibatis.parsing;
  
@@ -80,37 +80,43 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
 +import java.util.HashSet;
 +import java.util.List;
 +import java.util.Set;
++import java.util.regex.Pattern;
 +
  /**
   * @author Clinton Begin
   */
-@@ -23,6 +28,11 @@
+@@ -23,6 +29,16 @@
    private final String openToken;
    private final String closeToken;
    private final TokenHandler handler;
 +  private final Set<String> keywordSet = new HashSet<>(Arrays.asList(
 +            "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER",
 +            "DROP", "TRUNCATE", "WHERE", "ORDER", "GROUP", "HAVING", "JOIN",
-+            "LEFT", "RIGHT", "INNER", "UNION", "DISTINCT", "LIMIT", "OFFSET"
++            "LEFT", "RIGHT", "INNER", "UNION", "DISTINCT", "LIMIT", "OFFSET",
++	    "TABLE", "INDEX", "COLUMN"
 +    ));
++  private static final String TAIL_REG_IN = "\\s+IN$";
++  private static final String TAIL_REG_JOIN = "\\s+JOIN$";
++  private static final Pattern PATTERN_TAIL_IN = Pattern.compile(TAIL_REG_IN, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_TAIL_JOIN = Pattern.compile(TAIL_REG_JOIN, Pattern.CASE_INSENSITIVE);
  
    public GenericTokenParser(String openToken, String closeToken, TokenHandler handler) {
      this.openToken = openToken;
-@@ -30,6 +40,13 @@
+@@ -30,6 +46,13 @@
      this.handler = handler;
    }
  
 +  private String handleExpression(StringBuilder expression) {
-+    if (keywordSet.contains(expression.toString().toUpperCase())) {
-+        return expression.toString() + "_value";
++    if (keywordSet.contains(expression.toString().trim().toUpperCase())) {
++        return expression.toString().trim() + "_val";
 +    }
-+    return expression.toString();
++    return expression.toString().trim();
 +  }
 +
    public String parse(String text) {
      if (text == null || text.isEmpty()) {
        return "";
-@@ -40,6 +57,7 @@
+@@ -40,6 +63,7 @@
        return text;
      }
      char[] src = text.toCharArray();
@@ -118,17 +124,22 @@ diff -Naur a/src/main/java/org/apache/ibatis/parsing/GenericTokenParser.java b/s
      int offset = 0;
      final StringBuilder builder = new StringBuilder();
      StringBuilder expression = null;
-@@ -73,7 +91,17 @@
+@@ -73,7 +97,22 @@
            builder.append(src, start, src.length - start);
            offset = src.length;
          } else {
 -          builder.append(handler.handleToken(expression.toString()));
 +          handler.handleToken(expression.toString());
++	  String sqlFrag = builder.toString().trim().toLowerCase();
 +	  if ("#{".equals(this.openToken)) {
-+            builder.append("$" + order);
++            if (PATTERN_TAIL_IN.matcher(sqlFrag).find() && !PATTERN_TAIL_JOIN.matcher(sqlFrag).find()) {
++	        builder.append("('$" + order + "')");
++	    } else {
++		builder.append("'$" + order + "'");
++	    }
 +            order++;
 +          } else {
-+	    if (builder.toString().trim().toLowerCase().endsWith("in")) {
++	    if (PATTERN_TAIL_IN.matcher(sqlFrag).find() && !PATTERN_TAIL_JOIN.matcher(sqlFrag).find()) {
 +		builder.append("(" + handleExpression(expression) + ")");
 +	    } else {
 +                builder.append(handleExpression(expression));
@@ -151,8 +162,8 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/DynamicContext.ja
    }
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2023-11-25 09:43:45.486703017 +0800
-@@ -15,8 +15,9 @@
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.java	2024-01-17 09:46:29.754494784 +0800
+@@ -15,8 +15,11 @@
   */
  package org.apache.ibatis.scripting.xmltags;
  
@@ -160,12 +171,56 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
 +import java.util.Iterator;
  import java.util.Map;
 -import java.util.Optional;
++
++import java.util.regex.Pattern;
  
  import org.apache.ibatis.parsing.GenericTokenParser;
  import org.apache.ibatis.session.Configuration;
-@@ -68,15 +69,16 @@
+@@ -31,12 +34,17 @@
+   private final String collectionExpression;
+   private final Boolean nullable;
+   private final SqlNode contents;
+-  private final String open;
+-  private final String close;
+   private final String separator;
+   private final String item;
+   private final String index;
+   private final Configuration configuration;
++  private final String open;
++  private final String close;
++
++  private static final String TAIL_REG_IN = "\\s+IN$";
++  private static final String TAIL_REG_JOIN = "\\s+JOIN$";
++  private static final Pattern PATTERN_TAIL_IN = Pattern.compile(TAIL_REG_IN, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_TAIL_JOIN = Pattern.compile(TAIL_REG_JOIN, Pattern.CASE_INSENSITIVE);
+ 
+   /**
+    * @deprecated Since 3.5.9, use the
+@@ -44,7 +52,7 @@
+    */
+   @Deprecated
+   public ForEachSqlNode(Configuration configuration, SqlNode contents, String collectionExpression, String index,
+-      String item, String open, String close, String separator) {
++                        String item, String open, String close, String separator) {
+     this(configuration, contents, collectionExpression, null, index, item, open, close, separator);
+   }
+ 
+@@ -52,7 +60,7 @@
+    * @since 3.5.9
+    */
+   public ForEachSqlNode(Configuration configuration, SqlNode contents, String collectionExpression, Boolean nullable,
+-      String index, String item, String open, String close, String separator) {
++                        String index, String item, String open, String close, String separator) {
+     this.evaluator = new ExpressionEvaluator();
+     this.collectionExpression = collectionExpression;
+     this.nullable = nullable;
+@@ -67,16 +75,23 @@
+ 
    @Override
    public boolean apply(DynamicContext context) {
++    if (this.open != null && !StaticTextSqlNode.isConcateSql(context, this.open)) {
++      return false;
++    }
      Map<String, Object> bindings = context.getBindings();
 -    final Iterable<?> iterable = evaluator.evaluateIterable(collectionExpression, bindings,
 -        Optional.ofNullable(nullable).orElseGet(configuration::isNullableOnForEach));
@@ -176,7 +231,11 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
        return true;
      }
      boolean first = true;
-     applyOpen(context);
+-    applyOpen(context);
++    boolean concatOpenClose = (this.open != null && StaticTextSqlNode.isConcateSql(context, this.open));
++    if (concatOpenClose) {
++      applyOpen(context);
++    }
      int i = 0;
 -    for (Object o : iterable) {
 +    for (Iterator it = al.iterator(); it.hasNext(); ++i) {
@@ -184,7 +243,18 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
        DynamicContext oldContext = context;
        if (first || separator == null) {
          context = new PrefixedContext(context, "");
-@@ -137,7 +139,7 @@
+@@ -101,7 +116,9 @@
+       context = oldContext;
+       i++;
+     }
+-    applyClose(context);
++    if (concatOpenClose) {
++      applyClose(context);
++    }
+     context.getBindings().remove(item);
+     context.getBindings().remove(index);
+     return true;
+@@ -137,14 +154,14 @@
      return ITEM_PREFIX + item + "_" + i;
    }
  
@@ -193,7 +263,15 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
      private final DynamicContext delegate;
      private final int index;
      private final String itemIndex;
-@@ -168,6 +170,11 @@
+     private final String item;
+ 
+     public FilteredDynamicContext(Configuration configuration, DynamicContext delegate, String itemIndex, String item,
+-        int i) {
++                                  int i) {
+       super(configuration, null);
+       this.delegate = delegate;
+       this.index = i;
+@@ -168,6 +185,11 @@
      }
  
      @Override
@@ -205,7 +283,7 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
      public void appendSql(String sql) {
        GenericTokenParser parser = new GenericTokenParser("#{", "}", content -> {
          String newContent = content.replaceFirst("^\\s*" + item + "(?![^.,:\\s])", itemizeItem(item, index));
-@@ -228,6 +235,11 @@
+@@ -228,9 +250,15 @@
      }
  
      @Override
@@ -217,6 +295,10 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/ForEachSqlNode.ja
      public int getUniqueNumber() {
        return delegate.getUniqueNumber();
      }
+   }
+ 
+ }
++
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-07-21 14:59:18.357889106 +0800
 +++ b/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java	2023-11-23 20:30:53.099035836 +0800
@@ -236,8 +318,8 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/IfSqlNode.java b/
  }
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java
 --- a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-07-21 14:59:18.357889106 +0800
-+++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2023-12-21 14:32:39.603818220 +0800
-@@ -15,11 +15,57 @@
++++ b/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode.java	2024-01-18 15:06:39.137898537 +0800
+@@ -15,11 +15,61 @@
   */
  package org.apache.ibatis.scripting.xmltags;
  
@@ -252,16 +334,18 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
   */
  public class StaticTextSqlNode implements SqlNode {
 -  private final String text;
-+  private static final List<String> concateList = Arrays.asList("AND", "OR", "IN", "NOT\\s+IN", "LIKE", "LIMIT", "BETWEEN",
++  private static final List<String> concateList = Arrays.asList("AND", "OR", "IN", "NOT\\s+IN", "ON", "LIKE", "LIMIT", "BETWEEN",
 +          "ORDER\\s+BY", "GROUP\\s+BY", "HAVING", "JOIN", "LEFT\\s+JOIN", "RIGHT\\s+JOIN", "INNER\\s+JOIN", "WHERE",
 +          "VALUES", ",", "SELECT", "INSERT", "UPDATE", "DROP", "DELETE", "FROM", "SET", "INTO", "WHEN", "CASE", "END",
-+          "DISTINCT", "=", ">=", "<=", ">", "<");
++          "DISTINCT", "=", ">=", "<=", ">", "<", "ASC", "DESC");
 +  private static final StringJoiner sqlBuilder = new StringJoiner(" ");
 +
 +  private static final String SET_REG = "^update\\s+\\S+\\s+set";
 +  private static final String ORDERBY_TAIL_REG = "order\\s+by\\s+\\S+(\\s+\\S+)?$";
 +  private static final String ORDERBY_HEAD_REG = "^order\\s+by";
 +  private static final String ORDERBY_FRAGMENT_REG = "^order\\s+by\\s+\\S+\\s+\\S+?$";
++  private static final String LIMIT_FRAGMENT_REG = "limit\\s+(\\S+|\\S+\\s+,\\s+\\S+)$";
++  private static final String ON_FRAGMENT_REG = "^on\\s+";
 +  private static final String HEAD_REG;
 +  private static final String TAIL_REG;
 +  private static final Pattern PATTERN_HEAD_REG;
@@ -270,6 +354,8 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
 +  private static final Pattern PATTERN_ORDERBY_TAILREG = Pattern.compile(ORDERBY_TAIL_REG, Pattern.CASE_INSENSITIVE);
 +  private static final Pattern PATTERN_ORDERBY_HEADREG = Pattern.compile(ORDERBY_HEAD_REG, Pattern.CASE_INSENSITIVE);
 +  private static final Pattern PATTERN_ORDERBY_FRAGMENTREG = Pattern.compile(ORDERBY_FRAGMENT_REG, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_LIMIT_FRAGMENTREG = Pattern.compile(LIMIT_FRAGMENT_REG, Pattern.CASE_INSENSITIVE);
++  private static final Pattern PATTERN_ON_FRAGMENTREG = Pattern.compile(ON_FRAGMENT_REG, Pattern.CASE_INSENSITIVE);
 +
 +  static {
 +    StringBuilder headbuilder = new StringBuilder();
@@ -296,7 +382,7 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
  
    public StaticTextSqlNode(String text) {
      this.text = text;
-@@ -27,8 +73,87 @@
+@@ -27,8 +77,103 @@
  
    @Override
    public boolean apply(DynamicContext context) {
@@ -307,7 +393,7 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
 +      context.appendSql(text);
 +      return true;
 +    } else if(StrategyChoice.getStrategy() == StrategyChoice.STATEGY_JUDGE_KEYWORD) {
-+      if (isConcateSql(context)) {
++      if (isConcateSql(context, text)) {
 +        context.appendSql(text);
 +        return true;
 +      }
@@ -315,33 +401,29 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
 +    return false;
 +  }
 +
-+  private boolean isConcateSql(DynamicContext context) {
++  public static boolean isConcateSql(DynamicContext context, String staticText) {
 +    String sql_fragment = context.getInnerSql().toUpperCase();
 +    if (sql_fragment.length() == 0) {
 +      return true;
 +    } else {
-+      boolean startWithKeyword = PATTERN_HEAD_REG.matcher(this.text.trim()).find() || this.text.trim().startsWith(",");
++      boolean startWithKeyword = PATTERN_HEAD_REG.matcher(staticText.trim()).find() || staticText.trim().startsWith(",");
 +      boolean endWithKeyword = PATTERN_TAIL_REG.matcher(sql_fragment).find() || sql_fragment.endsWith(",");
 +      if (startWithKeyword == endWithKeyword) {
-+        return this.handleTheSame(startWithKeyword, endWithKeyword, sql_fragment);
++        return handleTheSame(startWithKeyword, endWithKeyword, sql_fragment, staticText);
 +      } else {
-+        return this.handleMultiKey(context);
++        return handleMultiKey(context, staticText);
 +      }
 +    }
 +  }
 +
-+  private boolean handleTheSame(boolean startWithKeyword, boolean endWithKeyword, String sql_fragment) {
-+    if (!startWithKeyword && !endWithKeyword) {
-+      if (sql_fragment.endsWith(")") && this.text.trim().startsWith("(")) {
-+        return false;
++    private static boolean handleTheSame(boolean startWithKeyword, boolean endWithKeyword, String sql_fragment, String staticText) {
++      if (!startWithKeyword && !endWithKeyword) {
++        if (sql_fragment.endsWith("(") || staticText.trim().startsWith(")")) {
++          return true;
++        }
 +      }
 +
-+      if (sql_fragment.endsWith("(") || this.text.trim().startsWith("(") || this.text.trim().startsWith(")")) {
-+        return true;
-+      }
-+    }
-+
-+    String text_upper = this.text.toUpperCase().trim();
++    String text_upper = staticText.toUpperCase().trim();
 +    if (startWithKeyword && endWithKeyword) {
 +      if (sql_fragment.endsWith("INSERT") && text_upper.startsWith("INTO")) {
 +        return true;
@@ -363,10 +445,19 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
 +    return false;
 +  }
 +
-+  private boolean handleMultiKey(DynamicContext context) {
++  private static boolean handleMultiKey(DynamicContext context, String staticText) {
 +    String sql_fragment = context.getInnerSql().toUpperCase();
-+    String text_upper = this.text.toUpperCase().trim();
++    String text_upper = staticText.toUpperCase().trim();
 +    if (PATTERN_ORDERBY_TAILREG.matcher(sql_fragment).find() && PATTERN_ORDERBY_HEADREG.matcher(text_upper).find()) {
++      return false;
++    }
++    if (PATTERN_LIMIT_FRAGMENTREG.matcher(sql_fragment).find() && PATTERN_ORDERBY_HEADREG.matcher(text_upper).find()) {
++      return false;
++    }
++    // handle join .... on
++    if ((countSubString(sql_fragment.replaceAll("\\s+", " "), " ON ")
++            == countSubString(sql_fragment.replaceAll("\\s+", " "), " JOIN "))
++            && PATTERN_ON_FRAGMENTREG.matcher(text_upper).find()) {
 +      return false;
 +    } else {
 +      return !PATTERN_SET_REG.matcher(sql_fragment).find() || !text_upper.startsWith("SET ");
@@ -381,9 +472,20 @@ diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StaticTextSqlNode
 +        this.text = this.text.replaceAll(sqlArr[3], "ASC");
 +      }
 +    }
++  }
++
++  private static int countSubString(String str, String subStr) {
++    int cont = 0;
++    int index = 0;
++    while ((index = str.indexOf(subStr, index)) != -1) {
++      cont++;
++      index += subStr.length();
++    }
++    return cont;
    }
  
  }
++
 +
 +
 diff -Naur a/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java b/src/main/java/org/apache/ibatis/scripting/xmltags/StrategyChoice.java
