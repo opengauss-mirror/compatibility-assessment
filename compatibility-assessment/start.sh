@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright (c): 2023-2023, Huawei Tech. Co., Ltd.
 
-VERSION=5.1.0
+VERSION=6.0.0
 dataSource=""
 confFile=""
 reportFile=""
