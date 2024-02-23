@@ -65,6 +65,16 @@ public class SqlParseController {
      * key for sql statement in middle file
      */
     public static final String KEY_SQL = "sql";
+
+    /**
+     * tag for sql statement in middle file
+     */
+    public static final String KEY_TAG = "tag";
+
+    /**
+     * origin xml filename
+     */
+    public static final String KEY_FILE = "file";
     private static final String FORMAT_REGIX = "^CREATE\\s+(FUNCTION|TRIGGER|PROCEDURE)";
     private static final Pattern SQLFORMATPATTERN = Pattern.compile(FORMAT_REGIX, Pattern.CASE_INSENSITIVE);
     private static final String DELIMITER = "delimiter";
@@ -145,6 +155,24 @@ public class SqlParseController {
     public static void appendJsonLine(StringBuilder builder, Object valueId, String valueSql) {
         builder.append(new JSONObject().fluentPut(SqlParseController.KEY_ID, valueId)
                 .fluentPut(SqlParseController.KEY_SQL, valueSql)
+                .toJSONString() + System.lineSeparator());
+    }
+
+    /**
+     * write sql to sqlfile
+     *
+     * @param builder StringBuilder
+     * @param valueId Object
+     * @param valueSql String
+     * @param valueTag String
+     * @param filename String
+     */
+    public static void appendJsonLine(StringBuilder builder, Object valueId, String valueSql, String valueTag,
+                                      String filename) {
+        builder.append(new JSONObject().fluentPut(SqlParseController.KEY_ID, valueId)
+                .fluentPut(SqlParseController.KEY_SQL, valueSql)
+                .fluentPut(SqlParseController.KEY_TAG, valueTag)
+                .fluentPut(SqlParseController.KEY_FILE, filename)
                 .toJSONString() + System.lineSeparator());
     }
 

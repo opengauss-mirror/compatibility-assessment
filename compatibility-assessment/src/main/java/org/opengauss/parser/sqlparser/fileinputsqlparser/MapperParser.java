@@ -33,6 +33,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -112,7 +113,9 @@ public class MapperParser extends FileInputSqlParser {
                 SqlSource sqlSource = mappedStatement.getSqlSource();
                 BoundSql boundSql = sqlSource.getBoundSql(null);
                 String sql = boundSql.getSql();
-                SqlParseController.appendJsonLine(builder, id.substring(id.lastIndexOf('.') + 1), sql);
+                String tag = mappedStatement.getSqlCommandType().toString().toLowerCase(Locale.ROOT);
+                SqlParseController.appendJsonLine(builder, id.substring(id.lastIndexOf('.') + 1), sql,
+                        tag, file.getCanonicalPath());
             }
             SqlParseController.writeSqlToFile(newFile.getName(), bufWriter, builder);
         } catch (IOException | BuilderException exp) {

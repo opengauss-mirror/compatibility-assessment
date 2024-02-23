@@ -194,6 +194,7 @@ public class CompatibilityTable {
         }
 
         int total = this.sqlCompatibilities.size();
+        AssessmentEntry.increTotalSql(total);
         String data = "<tr>"
                 + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + total + "</td>"
                 + System.lineSeparator()
