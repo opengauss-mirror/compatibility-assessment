@@ -101,7 +101,7 @@ public class Constant {
             PRE_MYSQL8, PRE_MYSQL5, PRE_SQLSERVER, PRE_OPENGAUSS, PRE_ORACLE);
 
     private static final String NEWLINE = StrUtil.LF;
-    private static final String STACK_NAME = "collect";
+    private static final String STACK_NAME = ".attach";
     private static int sqlNumber = 1;
     private static int txtNumber = 1;
     private static List<String> sqls = new ArrayList<>();

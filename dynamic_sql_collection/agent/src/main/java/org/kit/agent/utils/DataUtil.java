@@ -31,7 +31,7 @@ public class DataUtil {
      * @return String String
      */
     public static String getDate() {
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd_");
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         LocalDateTime ldt = LocalDateTime.now();
         return ldt.format(dtf);
     }

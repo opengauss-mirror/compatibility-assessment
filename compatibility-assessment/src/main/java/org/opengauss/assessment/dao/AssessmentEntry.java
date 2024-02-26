@@ -133,6 +133,7 @@ public class AssessmentEntry {
             put("-sql", ".sql");
             put("-general", ".general");
             put("-slow", ".slow");
+            put("-attach", ".attach");
         }
     };
     private static int totalSql = 0;

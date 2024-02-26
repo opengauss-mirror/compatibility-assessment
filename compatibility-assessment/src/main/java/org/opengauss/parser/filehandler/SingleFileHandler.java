@@ -55,9 +55,15 @@ public class SingleFileHandler implements FileHandler {
      * mybatis/ibatis mapper file extension
      */
     public static final String MAPPER_EXTENSION = "xml";
+
+    /**
+     * dynamic insertion output file extension
+     */
+    public static final String ATTACH_EXTENSION = "attach";
     private static final Logger LOGGER = LoggerFactory.getLogger(SingleFileHandler.class);
     private static Set<String> fileExtensions = new HashSet<>
-            (Arrays.asList(SQLFILE_EXTENSION, GENERALLOG_EXTENSION, SLOWLOG_EXTENSION, MAPPER_EXTENSION));
+            (Arrays.asList(SQLFILE_EXTENSION, GENERALLOG_EXTENSION, SLOWLOG_EXTENSION, MAPPER_EXTENSION,
+                    ATTACH_EXTENSION));
 
     private Map<String, List<File>> extensionTofiles = new HashMap<>();
 

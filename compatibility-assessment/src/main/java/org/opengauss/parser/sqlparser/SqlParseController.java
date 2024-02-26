@@ -186,7 +186,8 @@ public class SqlParseController {
                     filesMap.getOrDefault(SingleFileHandler.SQLFILE_EXTENSION, DEFAULT_FILE_LIST),
                     filesMap.getOrDefault(SingleFileHandler.GENERALLOG_EXTENSION, DEFAULT_FILE_LIST),
                     filesMap.getOrDefault(SingleFileHandler.SLOWLOG_EXTENSION, DEFAULT_FILE_LIST),
-                    filesMap.getOrDefault(SingleFileHandler.MAPPER_EXTENSION, DEFAULT_FILE_LIST));
+                    filesMap.getOrDefault(SingleFileHandler.MAPPER_EXTENSION, DEFAULT_FILE_LIST),
+                    filesMap.getOrDefault(SingleFileHandler.ATTACH_EXTENSION, DEFAULT_FILE_LIST));
         } else {
             String assessmentType = assessmentInfo.getProperty(AssessmentInfoChecker.ASSESSMENTTYPE);
             if (assessmentType.equalsIgnoreCase(AssessmentInfoChecker.ASSESSMENT_OBJECT)) {

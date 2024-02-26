@@ -24,7 +24,7 @@
 * 配置conf文件下的yml信息
 * 自定义端口,应用访问路径(例如:/idata;/datachain;默认可以不修改)
 * 启动命令:java -jar tool.jar --spring.config.name=application --spring.config.location=classpath:/application.yml,file:
-  ./conf/application.yml &
+* ./conf/application.yml &
 
 ### 文件下载
 

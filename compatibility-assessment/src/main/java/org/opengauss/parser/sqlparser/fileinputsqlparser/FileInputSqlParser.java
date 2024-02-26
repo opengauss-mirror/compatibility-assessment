@@ -56,6 +56,11 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
     public static final Integer SQL_CODE = 4;
 
     /**
+     * dynamic collect file code
+     */
+    public static final Integer ATTACH_CODE = 5;
+
+    /**
      * sql output dir path
      */
     protected static String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();
@@ -68,6 +73,7 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
             put(SLOW_CODE, "slow");
             put(MAPPER_CODE, "mapper");
             put(SQL_CODE, "sql");
+            put(ATTACH_CODE, "attach");
         }
     };
 
