@@ -40,6 +40,7 @@ public class FilesSqlParser implements SqlParser {
     private List<File> generallogs;
     private List<File> slowlogs;
     private List<File> mappers;
+    private List<File> attachs;
     private ThreadPoolExecutor poolExecutor;
 
 
@@ -50,12 +51,15 @@ public class FilesSqlParser implements SqlParser {
      * @param generallogs List<File>
      * @param slowlogs List<File>
      * @param mappers List<File>
+     * @param attachs List<File>
      */
-    public FilesSqlParser(List<File> sqlfiles, List<File> generallogs, List<File> slowlogs, List<File> mappers) {
+    public FilesSqlParser(List<File> sqlfiles, List<File> generallogs, List<File> slowlogs, List<File> mappers,
+                          List<File> attachs) {
         this.sqlfiles = sqlfiles;
         this.generallogs = generallogs;
         this.slowlogs = slowlogs;
         this.mappers = mappers;
+        this.attachs = attachs;
         initThreadPool();
     }
 
@@ -75,6 +79,9 @@ public class FilesSqlParser implements SqlParser {
         }
         for (File mapper : mappers) {
             poolExecutor.execute(new MapperParser(mapper));
+        }
+        for (File attach : attachs) {
+            poolExecutor.execute(new DynamicCollectParser(attach));
         }
         poolExecutor.shutdown();
 
