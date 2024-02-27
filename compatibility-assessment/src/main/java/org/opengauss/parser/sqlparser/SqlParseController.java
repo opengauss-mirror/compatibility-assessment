@@ -75,6 +75,11 @@ public class SqlParseController {
      * origin xml filename
      */
     public static final String KEY_FILE = "file";
+
+    /**
+     * attach file stack info key
+     */
+    public static final String KEY_POS = "pos";
     private static final String FORMAT_REGIX = "^CREATE\\s+(FUNCTION|TRIGGER|PROCEDURE)";
     private static final Pattern SQLFORMATPATTERN = Pattern.compile(FORMAT_REGIX, Pattern.CASE_INSENSITIVE);
     private static final String DELIMITER = "delimiter";

@@ -303,6 +303,9 @@ public class AssessmentEntry {
         while ((jsonLine = bufferedReader.readLine()) != null) {
             JSONObject jsonObject = JSONObject.parseObject(jsonLine);
             String id = jsonObject.getString(SqlParseController.KEY_ID);
+            if (id == null) {
+                id = jsonObject.getString(SqlParseController.KEY_POS);
+            }
             String sql = jsonObject.getString(SqlParseController.KEY_SQL)
                     .replaceAll(BLANKS, " ");
             String tag = jsonObject.getString(SqlParseController.KEY_TAG);
