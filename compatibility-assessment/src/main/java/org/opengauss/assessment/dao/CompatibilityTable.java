@@ -15,7 +15,10 @@
 
 package org.opengauss.assessment.dao;
 
+import org.apache.commons.io.FileUtils;
 import org.opengauss.parser.command.Commander;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.BufferedWriter;
@@ -25,12 +28,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import static org.opengauss.assessment.dao.CompatibilityType.UNSUPPORTED_COMPATIBLE;
-import static org.opengauss.assessment.dao.CompatibilityType.AST_COMPATIBLE;
-import static org.opengauss.assessment.dao.CompatibilityType.COMPATIBLE;
-import static org.opengauss.assessment.dao.CompatibilityType.INCOMPATIBLE;
-import static org.opengauss.assessment.dao.CompatibilityType.SKIP_COMMAND;
-
 /**
  * Compatibility table.
  *
@@ -38,6 +35,9 @@ import static org.opengauss.assessment.dao.CompatibilityType.SKIP_COMMAND;
  * @since : 2023/7/7
  */
 public class CompatibilityTable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CompatibilityTable.class);
+    private static final String JS_FILENAME = System.getProperty("user.dir") + File.separator + "js"
+            + File.separator + "Chart.bundle.min.js";
     private static final String LINESEP = System.lineSeparator();
 
     private File fd;
@@ -491,6 +491,7 @@ public class CompatibilityTable {
      */
     public boolean generateReportHeader(String output, String compat) {
         this.fd = new File(output);
+        String jsContent = readJsContent(JS_FILENAME);
         String strCss = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />"
             + System.lineSeparator()
             + "<head><title>openGauss 兼容性评估报告</title>" + System.lineSeparator() + "<style type=\"text/css\">"
@@ -507,11 +508,21 @@ public class CompatibilityTable {
             + "canvas {background: #ffffff;}"
             + ".content-row td{background: #f3f3f3;}"
             + "</style>"
-            + "<script src=\"js/Chart.bundle.min.js\"></script>"
+            + "<script>" + jsContent + "</script>"
             + "</head><body class=\"wdr\">" + System.lineSeparator()
             + "<div id=\"collapse\">"
             + "<h1 class=\"wdr\">" + compat + " 兼容性评估报告</h1>" + System.lineSeparator();
         return canWriteData(strCss);
+    }
+
+    private String readJsContent(String filename) {
+        String content = null;
+        try {
+            content = FileUtils.readFileToString(new File(filename), "UTF-8");
+        } catch (IOException exp) {
+            LOGGER.error("read js file content occur io exception");
+        }
+        return content;
     }
 
     private boolean canWriteData(String str) {
