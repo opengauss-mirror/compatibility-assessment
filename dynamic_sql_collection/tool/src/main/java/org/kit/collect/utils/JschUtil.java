@@ -174,7 +174,7 @@ public class JschUtil {
             // Add the names of .sql and .txt files to the list
             for (ChannelSftp.LsEntry entry : entries) {
                 String filename = entry.getFilename();
-                if (filename.contains("collect")) {
+                if (filename.contains(".attach")) {
                     fileNames.add(filename);
                 }
             }
