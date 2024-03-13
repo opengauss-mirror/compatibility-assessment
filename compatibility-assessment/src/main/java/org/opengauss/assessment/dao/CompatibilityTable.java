@@ -84,6 +84,7 @@ public class CompatibilityTable {
 
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
             str += "<th class=\"wdrbg\" scope=\"col\">初始位置</th>";
+            str += "<th class=\"wdrbg\" scope=\"col\">源文件名</th>";
         }
         str += "</tr>" + System.lineSeparator();
 
@@ -103,7 +104,7 @@ public class CompatibilityTable {
                     String sqlDetail = "<tr style=\"border-top-width: 2px;\">"
                             + "<td style=\"width:2%\" class=\"" + type + "\">" + sqlCompatibility.getLine()
                             + System.lineSeparator() + "</td>" + System.lineSeparator()
-                            + "<td style=\"width:59%\" class=\"" + type + "\">" + sqlCompatibility.getSql()
+                            + "<td style=\"width:50%\" class=\"" + type + "\">" + sqlCompatibility.getSql()
                             + System.lineSeparator() + "</td>" + System.lineSeparator()
                             + "<td style=\"width:4%\" class=\"" + type + "\" align=\"left\" >"
                             + getCompatibilityString(sqlCompatibility.getCompatibilityType()) + "</td>"
@@ -114,6 +115,8 @@ public class CompatibilityTable {
                     if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
                         sqlDetail += "<td style=\"width:15%\" class=\"" + type + "\" align=\"center\">"
                                 + sqlCompatibility.getId();
+                        sqlDetail += "<td style=\"width:9%\" class=\"" + type + "\" align=\"center\">"
+                                + sqlCompatibility.getOriginFileName();
                     }
                     sqlDetail += "</td>" + System.lineSeparator() + "</tr>" + System.lineSeparator();
                     bufferedWriter.write(sqlDetail);

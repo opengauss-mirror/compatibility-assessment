@@ -28,6 +28,7 @@ public class SQLCompatibility {
     private AssessmentType sqlType;
     private CompatibilityType compatibilityType;
     private String errDetail;
+    private String file;
 
     /**
      * Construct
@@ -38,15 +39,17 @@ public class SQLCompatibility {
      * @param sqlType           : sql type.
      * @param compatibilityType : assessment result type.
      * @param errDetail         : error information.
+     * @param file              : original filename information.
      */
     public SQLCompatibility(String id, int line, String sql, AssessmentType sqlType,
-                            CompatibilityType compatibilityType, String errDetail) {
+                            CompatibilityType compatibilityType, String errDetail, String file) {
         this.id = id;
         this.line = line;
         this.sql = sql;
         this.sqlType = sqlType;
         this.compatibilityType = compatibilityType;
         this.errDetail = errDetail;
+        this.file = file;
     }
 
     public String getId() {
@@ -95,5 +98,13 @@ public class SQLCompatibility {
 
     public void setErrDetail(String errDetail) {
         this.errDetail = errDetail;
+    }
+
+    public String getOriginFileName() {
+        return file;
+    }
+
+    public void setOriginFileName(String originFileName) {
+        this.file = originFileName;
     }
 }

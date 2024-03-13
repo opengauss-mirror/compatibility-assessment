@@ -87,6 +87,11 @@ public class AssessmentEntry {
     public static final String RESULT_KEY_ID = "id";
 
     /**
+     * origin filename  in report
+     */
+    public static final String RESULT_KEY_FILE = "file";
+
+    /**
      * line number in report
      */
     public static final String RESULT_KEY_LINE = "line";
@@ -531,6 +536,9 @@ public class AssessmentEntry {
     private void readResFromFile(CompatibilityTable table) {
         File dir = new File(RESULT_DIR);
         File[] files = dir.listFiles();
+        if (files == null) {
+            return;
+        }
         Map<String, Boolean> fileNameMap = Arrays.stream(files).collect(
                 Collectors.toMap(File::getAbsolutePath, (element) -> false));
 
@@ -622,7 +630,8 @@ public class AssessmentEntry {
                     .fluentPut(RESULT_KEY_SQL, scanSingleSql.getSql())
                     .fluentPut(RESULT_KEY_TYPE, compatibilityType)
                     .fluentPut(RESULT_KEY_ERINFO, errorInfo)
-                    .fluentPut(RESULT_KEY_ID, scanSingleSql.getId());
+                    .fluentPut(RESULT_KEY_ID, scanSingleSql.getId())
+                    .fluentPut(RESULT_KEY_FILE, scanSingleSql.getFilename());
             bufWriter.write(jsonObject.toJSONString() + System.lineSeparator());
         } catch (IOException exp) {
             LOGGER.error("write assessment result record to file failed, filename is " + resFilename);
@@ -777,7 +786,20 @@ public class AssessmentEntry {
                     LOGGER.info(pset.getProname() + ": create database " + dbname + " automatically.");
                 }
             }
-        } catch (SQLException e) {
+
+            //create dolphin plugin.
+            String pluginName = dbPlugins[assessmentSettings.getDatabase()];
+            assessmentSettings.setPlugin(true);
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info(pset.getProname() + ": Create Plugin[" + pluginName + "] automatically.");
+            }
+            String host = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
+                    AssessmentInfoChecker.HOST);
+            String port = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
+                    AssessmentInfoChecker.PORT);
+            getJSchConnect(host, port, assessmentSettings.getDbname(), pluginName);
+            Thread.sleep(1000);
+        } catch (SQLException | InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -861,7 +883,7 @@ public class AssessmentEntry {
                     + " pg_available_extensions where name = ?";
             Optional opt = queryOne(connection, extensionSql, "isIncludeExtension", 1, pluginName);
             if (!opt.isEmpty()) {
-                createPluginHelper(connection, pluginName, extensionSql, String.valueOf(opt.get()));
+                createPluginHelper(String.valueOf(opt.get()));
             }
         }
     }
@@ -875,20 +897,8 @@ public class AssessmentEntry {
      * @param result       : query result.
      * @throws SQLException : throw SQLException
      */
-    private void createPluginHelper(Connection connection, String pluginName, String extensionSql, String result)
-            throws SQLException {
-        if (result.equals("f") || result.equals("0")) {
-            assessmentSettings.setPlugin(true);
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER.info(pset.getProname() + ": Create Plugin[" + pluginName + "] automatically.");
-            }
-            String host = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
-                    AssessmentInfoChecker.HOST);
-            String port = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
-                    AssessmentInfoChecker.PORT);
-            getJSchConnect(host, port, assessmentSettings.getDbname(), pluginName);
-            checkPlugin(connection, pluginName, extensionSql, result);
-        } else if (result.equals("t") || result.equals("1")) {
+    private void createPluginHelper(String result) {
+        if (result.equals("t") || result.equals("1")) {
             assessmentSettings.setPlugin(true);
         } else {
             if (LOGGER.isInfoEnabled()) {
