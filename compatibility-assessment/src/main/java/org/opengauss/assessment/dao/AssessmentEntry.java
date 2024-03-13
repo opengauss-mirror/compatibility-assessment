@@ -531,6 +531,9 @@ public class AssessmentEntry {
     private void readResFromFile(CompatibilityTable table) {
         File dir = new File(RESULT_DIR);
         File[] files = dir.listFiles();
+        if (files == null) {
+            return;
+        }
         Map<String, Boolean> fileNameMap = Arrays.stream(files).collect(
                 Collectors.toMap(File::getAbsolutePath, (element) -> false));
 

@@ -153,6 +153,7 @@ public class CompatibilityTable {
             + chartsCount + "\" style=\"width: 2000px;height: 250px;\">条形图表区</canvas>"
             + "</td></tr>" + System.lineSeparator();
         chartsCount++ ;
+        AssessmentEntry.increTotalSql(this.sqlCompatibilities.size());
         try (FileWriter fileWriter = new FileWriter(fd, true)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
                 bufferedWriter.write(strCharts);
@@ -161,59 +162,6 @@ public class CompatibilityTable {
             return false;
         }
         return generateReport();
-    }
-
-    /**
-     * write data.
-     *
-     * @param bufferedWriter : bufferedWriter
-     * @throws IOException : throw IOException
-     */
-    private void writeData(BufferedWriter bufferedWriter) throws IOException {
-        int compatible = 0;
-        int astCompatible = 0;
-        int incompatible = 0;
-        int unsupportedCompatible = 0;
-        int skipCommand = 0;
-        for (SQLCompatibility sqlCompatibility : this.sqlCompatibilities) {
-            switch (sqlCompatibility.getCompatibilityType()) {
-                case COMPATIBLE:
-                    compatible++ ;
-                    break;
-                case AST_COMPATIBLE:
-                    astCompatible++ ;
-                    break;
-                case INCOMPATIBLE:
-                    incompatible++ ;
-                    break;
-                case UNSUPPORTED_COMPATIBLE:
-                    unsupportedCompatible++ ;
-                    break;
-                case SKIP_COMMAND:
-                    skipCommand++ ;
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        int total = this.sqlCompatibilities.size();
-        AssessmentEntry.increTotalSql(total);
-        String data = "<tr>"
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + total + "</td>"
-            + System.lineSeparator()
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + compatible + "</td>"
-            + System.lineSeparator()
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + astCompatible + "</td>"
-            + System.lineSeparator()
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + incompatible + "</td>"
-            + System.lineSeparator()
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + unsupportedCompatible + "</td>"
-            + System.lineSeparator()
-            + "<td class=\"wdrnc\" style=\"text-align: center;font-size: 16px;\">" + skipCommand + "</td>"
-            + System.lineSeparator() + "</tr>" + System.lineSeparator()
-            + "</table>" + System.lineSeparator();
-        bufferedWriter.write(data);
     }
 
     /**
