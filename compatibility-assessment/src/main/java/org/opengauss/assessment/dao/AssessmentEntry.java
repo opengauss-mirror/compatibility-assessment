@@ -777,7 +777,20 @@ public class AssessmentEntry {
                     LOGGER.info(pset.getProname() + ": create database " + dbname + " automatically.");
                 }
             }
-        } catch (SQLException e) {
+
+            //create dolphin plugin.
+            String pluginName = dbPlugins[assessmentSettings.getDatabase()];
+            assessmentSettings.setPlugin(true);
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER.info(pset.getProname() + ": Create Plugin[" + pluginName + "] automatically.");
+            }
+            String host = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
+                    AssessmentInfoChecker.HOST);
+            String port = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
+                    AssessmentInfoChecker.PORT);
+            getJSchConnect(host, port, assessmentSettings.getDbname(), pluginName);
+            Thread.sleep(1000);
+        } catch (SQLException | InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -861,7 +874,7 @@ public class AssessmentEntry {
                     + " pg_available_extensions where name = ?";
             Optional opt = queryOne(connection, extensionSql, "isIncludeExtension", 1, pluginName);
             if (!opt.isEmpty()) {
-                createPluginHelper(connection, pluginName, extensionSql, String.valueOf(opt.get()));
+                createPluginHelper(String.valueOf(opt.get()));
             }
         }
     }
@@ -869,26 +882,12 @@ public class AssessmentEntry {
     /**
      * create whale/dolphin plugin helper.
      *
-     * @param connection   : jdbc connection.
-     * @param pluginName   : plugin name.
-     * @param extensionSql : query sql.
      * @param result       : query result.
      * @throws SQLException : throw SQLException
      */
-    private void createPluginHelper(Connection connection, String pluginName, String extensionSql, String result)
+    private void createPluginHelper(String result)
             throws SQLException {
-        if (result.equals("f") || result.equals("0")) {
-            assessmentSettings.setPlugin(true);
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER.info(pset.getProname() + ": Create Plugin[" + pluginName + "] automatically.");
-            }
-            String host = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
-                    AssessmentInfoChecker.HOST);
-            String port = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
-                    AssessmentInfoChecker.PORT);
-            getJSchConnect(host, port, assessmentSettings.getDbname(), pluginName);
-            checkPlugin(connection, pluginName, extensionSql, result);
-        } else if (result.equals("t") || result.equals("1")) {
+        if (result.equals("t") || result.equals("1")) {
             assessmentSettings.setPlugin(true);
         } else {
             if (LOGGER.isInfoEnabled()) {
