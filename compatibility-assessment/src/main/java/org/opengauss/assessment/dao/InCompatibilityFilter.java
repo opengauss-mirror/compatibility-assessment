@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -44,7 +45,7 @@ public class InCompatibilityFilter {
             "rows", "percent", "names", "limit", "authid", "location", "cluster", "storage", "shrink", "column_name",
             "system", "language", "datetime", "disk", "enable", "copy", "mapping", "checkpoint", "operator", "verify",
             "sysid", "workload", "comment", "schedule", "no", "extract", "channel", "view", "share", "owner",
-            "resource", "source", "node", "label", "performance");
+            "resource", "source", "node", "label", "performance", "freeze");
     private static final Pattern SQLHEADER_PAT = Pattern.compile(SQL_HEADER, Pattern.CASE_INSENSITIVE);
     private static final Pattern SELECTFROM_PAT = Pattern.compile(SELECTFROM, Pattern.CASE_INSENSITIVE);
 
@@ -75,7 +76,7 @@ public class InCompatibilityFilter {
     public static String filterKeyWord(String errInfo) {
         String errKey = getErrKey(errInfo);
         String newErrInfo = errInfo;
-        if (errKey.length() == 0 || !keyWordList.contains(errKey)) {
+        if (errKey.length() == 0 || !keyWordList.contains(errKey.toLowerCase(Locale.ROOT))) {
             return newErrInfo;
         }
         newErrInfo = "关键字问题：" + errKey + System.lineSeparator() + errInfo;
