@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) 2023-2023 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
+package org.opengauss.parser.exception;
+
+ /**
+ * Description: if jdbc connect failed, throw this Exception
+ *
+ * @author jianghongbo
+ * @date 2024/3/26
+ */
+public class JdbcConnectionException extends RuntimeException {
+    /**
+     * Constructor
+     */
+    public JdbcConnectionException() {
+        super();
+    }
+
+    /**
+     * Constructor
+     *
+     * @param message String
+     */
+    public JdbcConnectionException(String message) {
+        super(message);
+    }
+}

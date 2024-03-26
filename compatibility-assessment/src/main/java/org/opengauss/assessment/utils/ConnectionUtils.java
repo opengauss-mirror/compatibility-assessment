@@ -54,7 +54,7 @@ public class ConnectionUtils {
         try {
             connection = DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            LOGGER.error("jdbc connect failed!");
+            LOGGER.warn("jdbc connect failed, maybe dolphin plugin does not create complete.");
         }
         return connection;
     }
