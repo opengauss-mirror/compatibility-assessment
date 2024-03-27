@@ -30,6 +30,7 @@ public class AssessmentSettings {
     private String inputDir = null;
     private String outputFile = null;
 
+
     /**
      * Construct
      */

@@ -122,6 +122,11 @@ public class AssessmentInfoChecker {
      * mysql jdbc url param
      */
     public static final String JDBCPARAM = "jdbcparam";
+
+    /**
+     * plugin create wait time
+     */
+    public static final String PLUGIN_WAITTIME = "plugin.createtime";
     private static final Set<String> dbinfo = new HashSet<>(
             Arrays.asList(USER, PASSWORD, HOST, PORT, DBNAME));
     private static final Logger LOGGER = LoggerFactory.getLogger(AssessmentInfoChecker.class);

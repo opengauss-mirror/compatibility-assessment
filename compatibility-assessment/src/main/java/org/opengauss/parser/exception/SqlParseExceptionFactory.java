@@ -43,6 +43,11 @@ public class SqlParseExceptionFactory {
     public static final int PARSEEXCEPTION_CODE = 4;
 
     /**
+     * jdbc connection exception code
+     */
+    public static final int JDBCEXCEPTION_CODE = 5;
+
+    /**
      * Exception factory, generate exception by exception code
      *
      * @param expCode int
@@ -62,6 +67,9 @@ public class SqlParseExceptionFactory {
         }
         if (expCode == PARSEEXCEPTION_CODE) {
             exp = new SqlParserException(message);
+        }
+        if (expCode == JDBCEXCEPTION_CODE) {
+            exp = new JdbcConnectionException(message);
         }
         return exp;
     }

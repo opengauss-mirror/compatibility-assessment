@@ -23,6 +23,7 @@ import org.opengauss.parser.FilesOperation;
 import org.opengauss.parser.command.Commander;
 import org.opengauss.parser.configure.AssessmentInfoChecker;
 import org.opengauss.parser.configure.AssessmentInfoManager;
+import org.opengauss.parser.exception.SqlParseExceptionFactory;
 import org.opengauss.parser.sqlparser.SqlParseController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,6 +139,8 @@ public class AssessmentEntry {
     };
     private static int totalSql = 0;
 
+    private Integer timeout = 2500;
+
     /**
      * assessment sql.
      *
@@ -163,7 +166,12 @@ public class AssessmentEntry {
             createAssessmentDatabase();
         }
 
-        try (Connection connection = getConnection(assessmentSettings.getDbname())) {
+        try (Connection connection = getAndRetryConnection(assessmentSettings.getDbname())) {
+            if (connection == null) {
+                throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.JDBCEXCEPTION_CODE,
+                        "may plugin dolphin not be created completely, try turn up plugin.createtime, " +
+                                "now the value is " + timeout.toString());
+            }
             /* create plugin and extension */
             installPlugins(connection);
             /* suspend notice when exec command like 'drop table if exists xxx' */
@@ -194,6 +202,24 @@ public class AssessmentEntry {
             LOGGER.info(pset.getProname() + ": Create database " + assessmentSettings.getDbname()
                     + " automatically, clear it manually!");
         }
+    }
+
+    private Connection getAndRetryConnection(String dbname) {
+        Connection conn = null;
+        Long start = System.currentTimeMillis();
+        try {
+            timeout = Integer.parseInt(AssessmentInfoManager.getInstance()
+                    .getProperty(AssessmentInfoChecker.PLUGIN_WAITTIME));
+            while (conn == null && System.currentTimeMillis() - start <= timeout) {
+                conn = getConnection(dbname);
+                Thread.sleep(1000);
+            }
+        } catch (NumberFormatException exp) {
+            LOGGER.warn("plugin.createtime is not a valid value, use default value.");
+        } catch (InterruptedException exp) {
+            LOGGER.error("InterruptedException occured when waitting get mysql connection.");
+        }
+        return conn;
     }
 
     /**
@@ -792,8 +818,7 @@ public class AssessmentEntry {
             String port = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
                     AssessmentInfoChecker.PORT);
             getJSchConnect(host, port, assessmentSettings.getDbname(), pluginName);
-            Thread.sleep(1000);
-        } catch (SQLException | InterruptedException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
