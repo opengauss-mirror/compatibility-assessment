@@ -80,6 +80,16 @@ public class AssessmentInfoManager implements ConfigureInfoManager {
     }
 
     /**
+     * judge if key exists in configure file
+     *
+     * @param key String
+     * @return Boolean
+     */
+    public boolean containsKey(String key) {
+        return props.containsKey(key);
+    }
+
+    /**
      * get output sql path
      *
      * @return String
