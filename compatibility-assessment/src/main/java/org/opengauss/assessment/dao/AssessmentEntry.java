@@ -166,7 +166,9 @@ public class AssessmentEntry {
             createAssessmentDatabase();
         }
 
-        try (Connection connection = getAndRetryConnection(assessmentSettings.getDbname())) {
+        try (Connection connection = assessmentSettings.isNeedCreateDatabase()
+                ? getAndRetryConnection(assessmentSettings.getDbname())
+                : getConnection(assessmentSettings.getDbname())) {
             if (connection == null) {
                 throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.JDBCEXCEPTION_CODE,
                         "may plugin dolphin not be created completely, try turn up plugin.createtime, " +
@@ -207,9 +209,12 @@ public class AssessmentEntry {
     private Connection getAndRetryConnection(String dbname) {
         Connection conn = null;
         Long start = System.currentTimeMillis();
+        AssessmentInfoManager assInfo = AssessmentInfoManager.getInstance();
         try {
-            timeout = Integer.parseInt(AssessmentInfoManager.getInstance()
-                    .getProperty(AssessmentInfoChecker.PLUGIN_WAITTIME));
+            if (assInfo.containsKey(AssessmentInfoChecker.PLUGIN_WAITTIME)) {
+                timeout = Integer.parseInt(assInfo
+                        .getProperty(AssessmentInfoChecker.PLUGIN_WAITTIME));
+            }
             while (conn == null && System.currentTimeMillis() - start <= timeout) {
                 conn = getConnection(dbname);
                 Thread.sleep(1000);
