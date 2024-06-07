@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import lombok.extern.slf4j.Slf4j;
 import org.kit.agent.impl.PreparedFormer;
 import org.kit.agent.impl.StateFormer;
@@ -28,6 +30,11 @@ public class SqlAgent {
      * 文件写入路径
      */
     public static String path = "/kit/file/";
+
+    /**
+     * Should transcribe
+     */
+    public static final AtomicBoolean SHOULD_TRANSCRIBE = new AtomicBoolean(false);
 
     /**
      * 文件大小阈值单位是字节，默认是10Mb
@@ -80,6 +87,9 @@ public class SqlAgent {
             }
             if (key.equals("writePath")) {
                 path = value;
+            }
+            if ("shouldTranscribe".equals(key) && "true".equalsIgnoreCase(value)) {
+                SHOULD_TRANSCRIBE.set(true);
             }
             // 参数单位为Mb 需要转换为字节
             if (key.equals("threshold")) {
