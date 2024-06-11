@@ -109,20 +109,20 @@ public class CompatibilityTable {
                         + getCompatibilityString(sqlCompatibility.getCompatibilityType())
                         + "\" style=\" display: flex;align-items: stretch; \">"
                         + "<div style=\"width:2%;display: inline-block;  "
-                        + "background-color: #ededed;margin: 3px 3px 0 0 ;\" align=\"center\">"
+                        + "background-color: #ededed;margin: 3px 5px 0 0 ;\" align=\"center\">"
                         + sqlCompatibility.getLine()
                         + "</div><div style=\"width:58%;display: inline-block; "
-                        + "background-color: #ededed;margin: 3px 3px 0 0  \" align=\"center\">"
+                        + "background-color: #ededed;margin: 3px 5px 0 0 ;\" align=\"center\">"
                         + sqlCompatibility.getSql()
                         + "</div><div style=\"width:4%;display: inline-block; "
-                        + "background-color: #ededed;margin: 3px 3px 0 0\" class=\"category-container\" align=center>"
+                        + "background-color: #ededed;margin: 3px 5px 0 0\" class=\"category-container\" align=center>"
                         + getCompatibilityString(sqlCompatibility.getCompatibilityType())
                         + "</div><textarea style=\"width:20%;display: inline-block;"
-                        + "background-color: #ededed;margin: 3px 3px 0 0  \" align=\"center\" >"
+                        + "background-color: #ededed;margin: 3px 5px 0 0  \" align=\"center\" >"
                         + sqlCompatibility.getErrDetail() + "</textarea>";
                     if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
                         sqlDetail += "<div style=\"width:15%;display: inline-block;"
-                            + "background-color: #ededed; margin: 3px 3px 0 0  \" align=\"center\">"
+                            + "background-color: #ededed; margin: 3px 5px 0 0  \" align=\"center\">"
                             + sqlCompatibility.getId();
                     }
                     sqlDetail += "</div>" + System.lineSeparator() + "</div>" + System.lineSeparator();
@@ -146,9 +146,9 @@ public class CompatibilityTable {
      */
     public boolean generateSQLCompatibilityStatistic(String fileName) {
         String strCharts = "<h2 class=\"wdr\">" + fileName + "</h2>"
-            + "<div style=\"display: none;\"><table class=\"tdiff\" style=\"width: 100%;\">"
+            + "<div style=\"display: block;\"><table class=\"tdiff\" style=\"width: 100%;\">"
             + "<tr><!-- 图表区 （上侧）--><td style=\"width: 400px;\" >"
-            + "<canvas id=\"myCharts" + chartsCount + "\" style=\"width: 400px;\">环形图表区</canvas>"
+            + "<canvas id=\"myCharts" + chartsCount + "\" style=\"width: 400px;margin:0 20px 0 20px;\">环形图表区</canvas>"
             + "</td><td style=\"width: 100%;\" ><canvas id=\"myBarCharts"
             + chartsCount + "\" style=\"width: 2000px;height: 250px;\">条形图表区</canvas>"
             + "</td></tr>" + System.lineSeparator();
@@ -201,7 +201,7 @@ public class CompatibilityTable {
             + "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />"
             + System.lineSeparator()
             + "<head><title>openGauss 兼容性评估报告</title>" + System.lineSeparator() + "<style type=\"text/css\">"
-            + "body.wdr {font:8pt Arial, Helvetica, Geneva, sans-serif;color:black;background:White;}"
+            + "body.wdr {font:12pt Arial, Helvetica, Geneva, sans-serif;color:black;background:White;}"
             + "h1.wdr {font:bold 20pt Arial,Helvetica,Geneva,sans-serif;color:#000000;"
             + "background-color:White;border-bottom:1px solid #cccc99;margin-top:0pt; "
             + "margin-bottom:0pt;padding:0px 0px 0px 0px;}"
@@ -212,7 +212,7 @@ public class CompatibilityTable {
             + "th.wdrbg {color:White;background:#04a0e8;padding-left:4px;padding-right:4px;"
             + "padding-bottom:2px}"
             + "canvas {background: #ffffff;}"
-            + ".content-row td{background: #f3f3f3;}textarea {padding: 0;border: none;"
+            + ".content-row td{background: #f3f3f3;}textarea {font:12pt Arial, Helvetica, Geneva, sans-serif;border: none;"
             + "box-sizing: border-box;}"
             + "</style>"
             + "<script>" + jsContent + "</script>"

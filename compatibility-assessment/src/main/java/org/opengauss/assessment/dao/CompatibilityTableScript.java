@@ -94,7 +94,7 @@ public class CompatibilityTableScript {
             + "                        display: true," + LINESEP
             + "                        text: '兼容总览'," + LINESEP
             + "                        fontColor: 'black'," + LINESEP
-            + "                        fontSize: '20'," + LINESEP
+            + "                        fontSize: '23'," + LINESEP
             + "                    }," + LINESEP
             + "                    " + LINESEP
             + "                    onClick: function (event, elements) {" + LINESEP
@@ -121,7 +121,7 @@ public class CompatibilityTableScript {
             + "                    }" + LINESEP
             + "                }," + LINESEP
             + "                    tooltips: {" + LINESEP
-            + "                        bodyFontSize: 12, // 设置工具提示字体大小为 10px   " + LINESEP
+            + "                        bodyFontSize: 15, // 设置工具提示字体大小为 10px   " + LINESEP
             + "                        callbacks: {       //百分比显示" + LINESEP
             + "                            label: function (tooltipItem, data) {" + LINESEP
             + "                                var label = data.labels[tooltipItem.index];" + LINESEP
@@ -134,7 +134,7 @@ public class CompatibilityTableScript {
             + "                    }," + LINESEP
             + "                    legend: {" + LINESEP
             + "                        labels: {" + LINESEP
-            + "                            fontSize: 12 // 设置图例标签字体大小为 10px  " + LINESEP
+            + "                            fontSize: 15 // 设置图例标签字体大小为 10px  " + LINESEP
             + "                        }" + LINESEP
             + "                    }" + LINESEP
             + "                };" + LINESEP
@@ -204,13 +204,16 @@ public class CompatibilityTableScript {
             + "                    }," + LINESEP
             + "                    scales: {  " + LINESEP
             + "                        xAxes:[{" + LINESEP
-            + "                            barThickness: 15," + LINESEP
+            + "                            barThickness: 20," + LINESEP
+            + "                            ticks: {fontSize: 15 // 设置x轴字体大小" + LINESEP
+            + "               }," + LINESEP
             + "                        }]," + LINESEP
             + "                        yAxes: [{  " + LINESEP
             + "                            ticks: {  " + LINESEP
             + "                                beginAtZero: true,  " + LINESEP
             + "                                min: 0  " + LINESEP
-            + "                            }  " + LINESEP
+            + " stepSize: Math.max(Object.values(contentCount)) >= 10 ? Math.ceil(Math.max(Object.values(contentCount))/10):1,"
+            +"  }  " + LINESEP
             + "                        }]  " + LINESEP
             + "                    },  " + LINESEP
             + "                    " + LINESEP
@@ -245,7 +248,7 @@ public class CompatibilityTableScript {
             + "                        }" + LINESEP
             + "                    }," + LINESEP
             + "                    tooltips: {" + LINESEP
-            + "                        bodyFontSize: 12, // 设置工具提示字体大小为 10px   " + LINESEP
+            + "                        bodyFontSize: 15, // 设置工具提示字体大小为 20px   " + LINESEP
             + "                        callbacks: {       //百分比显示" + LINESEP
             + "                            label: function (tooltipItem, data) {" + LINESEP
             + "                                var label = data.labels[tooltipItem.index];" + LINESEP
@@ -256,10 +259,7 @@ public class CompatibilityTableScript {
             + "                            }" + LINESEP
             + "                        }" + LINESEP
             + "                    }," + LINESEP
-            + "                    legend: {" + LINESEP
-            + "                        labels: {" + LINESEP
-            + "                            fontSize: 12 // 设置图例标签字体大小为 10px  " + LINESEP
-            + "                        }" + LINESEP
+            + "                    legend: {display: false, // 不显示条形图的图例 " + LINESEP
             + "                    }" + LINESEP
             + "                };" + LINESEP
             + "                // 使用当前上下文创建图表  " + LINESEP
