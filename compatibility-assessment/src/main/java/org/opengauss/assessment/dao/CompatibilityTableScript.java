@@ -212,8 +212,8 @@ public class CompatibilityTableScript {
             + "                            ticks: {  " + LINESEP
             + "                                beginAtZero: true,  " + LINESEP
             + "                                min: 0,  " + LINESEP
-            + " stepSize: Math.max(Object.values(contentCount)) >= 10 ? Math.ceil(Math.max(Object.values(contentCount))/10):1,"
-            +"  }  " + LINESEP
+            + " stepSize: Math.max(...Object.values(contentCount)) >= 10 ? "
+            +"  Math.ceil(Math.max(...Object.values(contentCount))/10):1,}  " + LINESEP
             + "                        }]  " + LINESEP
             + "                    },  " + LINESEP
             + "                    " + LINESEP
