@@ -83,18 +83,18 @@ public class CompatibilityTable {
     public boolean generateReport() {
         String strHeader = "<tr><td colspan=\"2\"><h3 class=\"wdr\">SQL 兼容详情</h3>"
             + "<div class=\"tdiff\" summary=\"This table displays SQL Assessment Data\" width=100% >"
-            + "<div width=100% style=\"color: #ffffff;\"><div class=\"wdrbg\" style=\"width:2%;"
-            + "background-color: #04a0e8;display: inline-block;\" align=\"center\">行号</div> "
+            + "<div width=100% style=\"color: #ffffff;display: flex;\"><div class=\"wdrbg\" style=\"width:2%;"
+            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">行号</div> "
             + "<div class=\"wdrbg\" style=\"width:58%;"
-            + "background-color: #04a0e8;display: inline-block;\" align=\"center\">SQL语句</div> "
+            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">SQL语句</div> "
             + "<div class=\"wdrbg\" style=\"width:4%;"
-            + "background-color: #04a0e8;display: inline-block;\" align=\"center\">兼容性</div> "
+            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">兼容性</div> "
             + "<div class=\"wdrbg\" style=\"width:20%;"
-            + "background-color: #04a0e8;display: inline-block;\" align=\"center\">兼容性详情</div> ";
+            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">兼容性详情</div> ";
 
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
             strHeader += "<div class=\"wdrbg\" style=\"width:15%;"
-                + "background-color: #04a0e8;display: inline-block;\" align=\"center\">初始位置</div></div>";
+                + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">初始位置</div></div>";
         }
         strHeader += "<div><div class=\"content-table" + contentTableCount + "\" width=100%>";
         contentTableCount++ ;
@@ -147,10 +147,10 @@ public class CompatibilityTable {
     public boolean generateSQLCompatibilityStatistic(String fileName) {
         String strCharts = "<h2 class=\"wdr\">" + fileName + "</h2>"
             + "<div style=\"display: block;\"><table class=\"tdiff\" style=\"width: 100%;\">"
-            + "<tr><!-- 图表区 （上侧）--><td style=\"width: 400px;\" >"
-            + "<canvas id=\"myCharts" + chartsCount + "\" style=\"width: 400px;margin:0 20px 0 20px;\">环形图表区</canvas>"
-            + "</td><td style=\"width: 100%;\" ><canvas id=\"myBarCharts"
-            + chartsCount + "\" style=\"width: 2000px;height: 250px;\">条形图表区</canvas>"
+            + "<tr><!-- 图表区 （上侧）--><td style=\"width: 17%;\" >"
+            + "<canvas id=\"myCharts" + chartsCount + "\" style=\"width: 100%;height: 230px;\">环形图表区</canvas>"
+            + "</td><td style=\"width: 83%;\" ><canvas id=\"myBarCharts"
+            + chartsCount + "\" style=\"width: 100%;height: 250px;\">条形图表区</canvas>"
             + "</td></tr>" + System.lineSeparator();
         chartsCount++ ;
         AssessmentEntry.increTotalSql(this.sqlCompatibilities.size());
@@ -209,8 +209,6 @@ public class CompatibilityTable {
             + "color:#000000;background-color:#c1b9b9;margin-top:4pt;margin-bottom:0pt;}"
             + "h3.wdr {font:bold 16pt Arial,Helvetica,Geneva,sans-serif;color:#000000;"
             + "background-color:White;margin-top:4pt;margin-bottom:0pt;}"
-            + "th.wdrbg {color:White;background:#04a0e8;padding-left:4px;padding-right:4px;"
-            + "padding-bottom:2px}"
             + "canvas {background: #ffffff;}"
             + ".content-row td{background: #f3f3f3;}textarea {font:12pt Arial, Helvetica, Geneva, sans-serif;border: none;"
             + "box-sizing: border-box;}"
