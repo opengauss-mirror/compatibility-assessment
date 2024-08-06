@@ -26,6 +26,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 
+import static org.opengauss.parser.sqlparser.fileinputsqlparser.FileInputSqlParser.EMPTY_STR;
+import static org.opengauss.parser.sqlparser.fileinputsqlparser.FileInputSqlParser.UNICODE_FEFF;
+
 /**
  * Description: handle files, util class
  *
@@ -98,6 +101,23 @@ public class FilesOperation {
      */
     public static void clearDir(File dir) {
         delete(dir);
+    }
+
+    /**
+     * trim illegal characters like "\uFEFF"
+     *
+     * @param sqlLine String
+     * @return boolean
+     */
+    public static String trimIllegalCharacter(String sqlLine) {
+        if (sqlLine == null) {
+            return EMPTY_STR;
+        }
+        String legalLine = EMPTY_STR;
+        if (sqlLine.startsWith(UNICODE_FEFF) || sqlLine.endsWith(UNICODE_FEFF)) {
+            legalLine = sqlLine.replace(UNICODE_FEFF, EMPTY_STR);
+        }
+        return legalLine;
     }
 
     private static void delete(File file) {

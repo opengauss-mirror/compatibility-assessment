@@ -61,6 +61,16 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
     public static final Integer ATTACH_CODE = 5;
 
     /**
+     * illegal character "\uFEFF"
+     */
+    public static final String UNICODE_FEFF = "\uFEFF";
+
+    /**
+     * empty string
+     */
+    public static final String EMPTY_STR = "";
+
+    /**
      * sql output dir path
      */
     protected static String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();

@@ -98,7 +98,7 @@ public class SqlFileParser extends FileInputSqlParser {
         StringBuffer buffer = new StringBuffer();
         boolean isDelimiter = false;
         while ((sqlLine = bufferedReader.readLine()) != null) {
-            sqlLine = sqlLine.trim();
+            sqlLine = FilesOperation.trimIllegalCharacter(sqlLine.trim());
 
             if (sqlLine.equals("") || sqlLine.startsWith("--")) {
                 if (buffer.length() == 0) {
