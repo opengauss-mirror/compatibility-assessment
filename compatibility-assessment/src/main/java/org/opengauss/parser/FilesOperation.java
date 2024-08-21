@@ -113,7 +113,7 @@ public class FilesOperation {
         if (sqlLine == null) {
             return EMPTY_STR;
         }
-        String legalLine = EMPTY_STR;
+        String legalLine = sqlLine;
         if (sqlLine.startsWith(UNICODE_FEFF) || sqlLine.endsWith(UNICODE_FEFF)) {
             legalLine = sqlLine.replace(UNICODE_FEFF, EMPTY_STR);
         }
