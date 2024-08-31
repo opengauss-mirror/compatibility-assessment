@@ -235,7 +235,12 @@ public class AssessmentEntry {
     private void sqlAssessment(CompatibilityTable compatibilityTable, Connection connection) {
         Path path = Paths.get(assessmentSettings.getInputDir());
         AtomicInteger fileCount = new AtomicInteger(0);
-        FilesOperation.clearDir(new File(RESULT_DIR));
+        try {
+            FilesOperation.clearDir(new File(RESULT_DIR));
+        } catch (NullPointerException exp) {
+            throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.FILESEXCEPTION_CODE,
+                    "clean result dir occur exception. exp: " + exp.getMessage());
+        }
         while (fileCount.intValue() < OUTPUT_SQL_FILE_COUNT) {
             if (Files.exists(path) && Files.isDirectory(path)) {
                 try (Stream<Path> files = Files.list(path)) {

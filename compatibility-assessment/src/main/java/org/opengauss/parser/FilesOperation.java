@@ -15,6 +15,7 @@
 
 package org.opengauss.parser;
 
+import org.opengauss.parser.exception.SqlParseExceptionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +90,10 @@ public class FilesOperation {
                 hasCreateStatus = newFile.createNewFile();
             } catch (IOException exp) {
                 LOGGER.error("create newFile occur IOException! newfile: " + newFile.getName(), exp);
+                if (isExceptionCauseExit(exp)) {
+                    throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.FILESEXCEPTION_CODE,
+                            "create output file occur exception. exp: " + exp.getMessage());
+                }
             }
         }
         return hasCreateStatus;
@@ -128,6 +133,14 @@ public class FilesOperation {
             }
         }
         file.delete();
+    }
+
+    private static boolean isExceptionCauseExit(IOException exp) {
+        String errMsg = exp.getMessage();
+        if (errMsg.contains("Permission denied") || errMsg.contains("No such file or directory")) {
+            return true;
+        }
+        return false;
     }
 }
 
