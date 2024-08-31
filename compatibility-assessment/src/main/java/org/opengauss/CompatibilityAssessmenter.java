@@ -39,7 +39,7 @@ public class CompatibilityAssessmenter {
     private static ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(2, 10,
             10L, TimeUnit.SECONDS, new LinkedBlockingQueue(100));
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         sqlParsingThreadExecute(args);
         checkConditions();
         sqlAssessmentThreadExecute();
@@ -66,7 +66,7 @@ public class CompatibilityAssessmenter {
         }
     }
 
-    private static void sqlParsingThreadExecute(String[] args) {
+    private static void sqlParsingThreadExecute(String[] args) throws ExecutionException, InterruptedException {
         ParserController parserController = new ParserController();
         parserController.setArgs(args);
         Future future = threadPoolExecutor.submit(parserController);
@@ -76,6 +76,7 @@ public class CompatibilityAssessmenter {
         } catch (InterruptedException | ExecutionException e) {
             LOGGER.error("sqlParsing thread occur Exception, exit. exception ", e);
             threadPoolExecutor.shutdownNow();
+            throw e;
         }
     }
 

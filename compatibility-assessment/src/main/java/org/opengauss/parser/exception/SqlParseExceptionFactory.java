@@ -48,6 +48,12 @@ public class SqlParseExceptionFactory {
     public static final int JDBCEXCEPTION_CODE = 5;
 
     /**
+     * files operation exception code
+     */
+    public static final int FILESEXCEPTION_CODE = 6;
+
+
+    /**
      * Exception factory, generate exception by exception code
      *
      * @param expCode int
@@ -70,6 +76,9 @@ public class SqlParseExceptionFactory {
         }
         if (expCode == JDBCEXCEPTION_CODE) {
             exp = new JdbcConnectionException(message);
+        }
+        if (expCode == FILESEXCEPTION_CODE) {
+            exp = new FilesOperationException(message);
         }
         return exp;
     }

@@ -18,6 +18,7 @@ package org.opengauss.parser.entry;
 import org.opengauss.parser.FilesOperation;
 import org.opengauss.parser.command.Commander;
 import org.opengauss.parser.configure.AssessmentInfoManager;
+import org.opengauss.parser.exception.SqlParseExceptionFactory;
 import org.opengauss.parser.sqlparser.SqlParseController;
 
 import java.io.File;
@@ -45,7 +46,12 @@ public class CommandEntry {
      */
     public void mainEntry(String[] args) {
         commander.parseCmd(args);
-        FilesOperation.clearDir(new File(AssessmentInfoManager.getInstance().getSqlOutDir()));
+        try {
+            FilesOperation.clearDir(new File(AssessmentInfoManager.getInstance().getSqlOutDir()));
+        } catch (NullPointerException exp) {
+            throw SqlParseExceptionFactory.getException(SqlParseExceptionFactory.FILESEXCEPTION_CODE,
+                    "clean sqlFiles occur exception. exp: " + exp.getMessage());
+        }
         SqlParseController sqlParseController = new SqlParseController();
         sqlParseController.parseSql();
     }
