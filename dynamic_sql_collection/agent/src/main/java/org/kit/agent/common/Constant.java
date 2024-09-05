@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.kit.agent.SqlAgent;
+import org.kit.agent.transcribe.SqlCatcher;
 import org.kit.agent.utils.DataUtil;
 
 /**
@@ -105,6 +106,7 @@ public class Constant {
     private static int sqlNumber = 1;
     private static int txtNumber = 1;
     private static List<String> sqls = new ArrayList<>();
+    private static SqlCatcher catcher;
 
     /**
      * sqlRecord
@@ -125,6 +127,13 @@ public class Constant {
     public static void stakeRecord(String sql, StackTraceElement[] stackTrace) {
         log.info(DataUtil.getTimeNow() + " start recording sql and stack information");
         String stackPath = SqlAgent.path + txtNumber + "_" + DataUtil.getDate() + STACK_NAME;
+        if (SqlAgent.SHOULD_TRANSCRIBE.get()) {
+            if (catcher == null) {
+                catcher = new SqlCatcher(SqlAgent.path);
+            }
+            catcher.catchSql(sql);
+            return;
+        }
         createFile(stackPath);
         String str = sql;
         if (str.contains("com.mysql")) {
@@ -149,7 +158,14 @@ public class Constant {
         sqls.add(str);
     }
 
-    private static String dealQuery(String query) {
+    /**
+     * Format sql
+     *
+     * @param query origin sql
+     *
+     * @return formatted sql
+     */
+    public static String dealQuery(String query) {
         String str = query;
         str = str.toLowerCase(Locale.ROOT).replace("\"", "")
                 .replace(NEWLINE, " ")
@@ -157,7 +173,13 @@ public class Constant {
         return str;
     }
 
-    private static void writeStringToFile(String content, String filePath) {
+    /**
+     * Write string to file
+     *
+     * @param content String the content
+     * @param filePath String the file full path
+     */
+    public static void writeStringToFile(String content, String filePath) {
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(filePath, true), "UTF-8"))) {
             writer.write(content);

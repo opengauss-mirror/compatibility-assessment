@@ -24,11 +24,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Attach {
     public static void main(String[] args) {
-        if (args.length != 6) {
-            log.error("Usage: java -jar attach.jar 18487 agent.jar "
-                    + "install neverStop=true executionTime=3 unit=minutes");
-            return;
-        }
         String pid = args[0];
         String path = args[1];
         String action = args[2];
