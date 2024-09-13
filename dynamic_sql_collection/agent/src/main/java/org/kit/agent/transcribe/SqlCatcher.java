@@ -54,6 +54,9 @@ public class SqlCatcher {
      * @param sql String the sql
      */
     public void catchSql(String sql) {
+        if (sqlFilePath == null || sqlFileName == null) {
+            return;
+        }
         String str = sql;
         if (str.contains("com.mysql")) {
             str = str.substring(str.indexOf(":") + 1);
@@ -108,8 +111,8 @@ public class SqlCatcher {
             this.schema = props.getProperty(ATTACH_TARGET_SCHEMA);
             loadFileConfig(props);
         } catch (IOException e) {
-            log.error("IOException occurred while read config file {}, error message is: {}.",
-                    configPath, e.getMessage());
+            log.error("IOException occurred while read config file {} whose path can only support absolute path,"
+                    + " error message is: {}.", configPath, e.getMessage());
         }
     }
 

@@ -7,6 +7,9 @@ package org.kit.agent.impl;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.security.ProtectionDomain;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.kit.agent.common.Constant;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -21,6 +24,15 @@ import org.objectweb.asm.Opcodes;
  * @since 2023-09-17
  */
 public class PreparedFormer implements ClassFileTransformer {
+    private static final Set<String> EXECUTE_LISTEN_SET = new HashSet<>();
+
+    static {
+        EXECUTE_LISTEN_SET.add("execute");
+        EXECUTE_LISTEN_SET.add("executeUpdate");
+        EXECUTE_LISTEN_SET.add("executeQuery");
+        EXECUTE_LISTEN_SET.add("addBatch");
+    }
+    
     @Override
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain
             protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
@@ -56,7 +68,7 @@ public class PreparedFormer implements ClassFileTransformer {
         public MethodVisitor visitMethod(int access, String name, String descriptor,
                                          String signature, String[] exceptions) {
             MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-            if (name.equals("execute")) {
+            if (EXECUTE_LISTEN_SET.contains(name)) {
                 return new PreparedMethodVisitor(mv);
             }
             return mv;
