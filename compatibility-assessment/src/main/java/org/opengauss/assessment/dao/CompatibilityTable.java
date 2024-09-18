@@ -83,18 +83,26 @@ public class CompatibilityTable {
     public boolean generateReport() {
         String strHeader = "<tr><td colspan=\"2\"><h3 class=\"wdr\">SQL 兼容详情</h3>"
             + "<div class=\"tdiff\" summary=\"This table displays SQL Assessment Data\" width=100% >"
-            + "<div width=100% style=\"color: #ffffff;display: flex;\"><div class=\"wdrbg\" style=\"width:2%;"
-            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">行号</div> "
-            + "<div class=\"wdrbg\" style=\"width:58%;"
-            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">SQL语句</div> "
-            + "<div class=\"wdrbg\" style=\"width:4%;"
-            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">兼容性</div> "
-            + "<div class=\"wdrbg\" style=\"width:20%;"
-            + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">兼容性详情</div> ";
+            + "<div width=100% style=\"color: #ffffff;display: flex;\">"
+            + "<div class=\"wdrbg\" style=\"background-color: #04a0e8;"
+            + " flex: 0 0 2%;display: flex; justify-content: center; align-items: center;"
+            + " margin: 3px 6px 0 0;\">行号</div> "
+            + "<div class=\"wdrbg\" style=\"background-color: #04a0e8; "
+            + "flex: 0 0 58%; display: flex; justify-content: center; align-items: center;"
+            + " margin: 3px 6px 0 0;\">SQL语句</div> "
+            + "<div class=\"wdrbg\" style=\"background-color: #04a0e8; "
+            + "flex: 0 0 4%; display: flex; justify-content: center; align-items: center;"
+            + " margin: 3px 6px 0 0;\">兼容性</div> "
+            + "<div class=\"wdrbg\" style=\"background-color: #04a0e8;"
+            + " flex-grow: 1; display: flex; justify-content: center; align-items: center; "
+            + "margin: 3px 6px 0 0;\">兼容性详情</div> ";
 
         if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
-            strHeader += "<div class=\"wdrbg\" style=\"width:15%;"
-                + "background-color: #04a0e8;display: inline-block;margin: 3px 5px 0 0 ;\" align=\"center\">初始位置</div></div>";
+            strHeader += "<div class=\"wdrbg\" style=\"background-color: #04a0e8; "
+                    + "flex: 0 0 15%; display: flex; justify-content: center; align-items: center;"
+                    + "margin: 3px 6px 0 0 ;\">初始位置</div></div>";
+        } else {
+            strHeader += "</div>";
         }
         strHeader += "<div><div class=\"content-table" + contentTableCount + "\" width=100%>";
         contentTableCount++ ;
@@ -108,24 +116,25 @@ public class CompatibilityTable {
                     String sqlDetail = "<div class=\"content-row\"  data-label=\""
                         + getCompatibilityString(sqlCompatibility.getCompatibilityType())
                         + "\" style=\" display: flex;align-items: stretch; \">"
-                        + "<div style=\"width:2%;display: inline-block;  "
-                        + "background-color: #ededed;margin: 3px 5px 0 0 ;\" align=\"center\">"
+                        + "<div style=\"background-color: #ededed; flex: 0 0 2%;display: flex;"
+                        + " justify-content: center; align-items: center; margin: 3px 6px 0 0;\">"
                         + sqlCompatibility.getLine()
-                        + "</div><div style=\"width:58%;display: inline-block; "
-                        + "background-color: #ededed;margin: 3px 5px 0 0 ;\" align=\"center\">"
+                        + "</div><div style=\"background-color: #ededed; flex: 0 0 58%; display: flex;"
+                        + " justify-content: center; align-items: center; margin: 3px 6px 0 0;\">"
                         + sqlCompatibility.getSql()
-                        + "</div><div style=\"width:4%;display: inline-block; "
-                        + "background-color: #ededed;margin: 3px 5px 0 0\" class=\"category-container\" align=center>"
+                        + "</div><div class=\"category-container\""
+                        + "style=\"background-color: #ededed; flex: 0 0 4%; display: flex; "
+                        + "justify-content: center; align-items: center; margin: 3px 6px 0 0;\">"
                         + getCompatibilityString(sqlCompatibility.getCompatibilityType())
-                        + "</div><textarea style=\"width:20%;display: inline-block;"
-                        + "background-color: #ededed;margin: 3px 5px 0 0  \" align=\"center\" >"
+                        + "</div><textarea style=\"background-color: #ededed; flex-grow: 1; display: flex; "
+                        + "justify-content: center; align-items: center; margin: 3px 6px 0 0;resize: vertical;\" >"
                         + sqlCompatibility.getErrDetail() + "</textarea>";
                     if (Commander.getDataSource().equalsIgnoreCase(Commander.DATAFROM_FILE)) {
-                        sqlDetail += "<div style=\"width:15%;display: inline-block;"
-                            + "background-color: #ededed; margin: 3px 5px 0 0  \" align=\"center\">"
-                            + sqlCompatibility.getId();
+                        sqlDetail += "<div style=\"background-color: #ededed; flex: 0 0 15%; display: flex;"
+                            + " justify-content: center; align-items: center;margin: 3px 6px 0 0 ;\">"
+                            + sqlCompatibility.getId() + "</div>";
                     }
-                    sqlDetail += "</div>" + System.lineSeparator() + "</div>" + System.lineSeparator();
+                    sqlDetail += "</div>" + System.lineSeparator();
                     bufferedWriter.write(sqlDetail);
                     index++;
                 }
