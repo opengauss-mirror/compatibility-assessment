@@ -125,7 +125,6 @@ public class Constant {
      * @param stackTrace stackTrace
      */
     public static void stakeRecord(String sql, StackTraceElement[] stackTrace) {
-        log.info(DataUtil.getTimeNow() + " start recording sql and stack information");
         String stackPath = SqlAgent.path + txtNumber + "_" + DataUtil.getDate() + STACK_NAME;
         if (SqlAgent.SHOULD_TRANSCRIBE.get()) {
             if (catcher == null) {
