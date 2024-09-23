@@ -400,6 +400,7 @@ sql.table.drop=false
 2. 目标进程使用的MySQL驱动为mysql-jdbc-connector 5.x及8.x
 3. 录制得到的sql只支持json文件存储
 4. 无法获取sql执行耗时
+5. 不支持采集多线程的目标程序
 
 ### general_log录制
 1. 调整MySQL全局参数general_log=ON，log_output='table'

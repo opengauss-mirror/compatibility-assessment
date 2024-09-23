@@ -15,6 +15,8 @@
 
 package org.opengauss.tool.dispatcher;
 
+import org.opengauss.tool.config.replay.ReplayConfig;
+import org.opengauss.tool.replay.factory.ReplayFactory;
 import org.opengauss.tool.transcribe.GeneralLogTask;
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.config.parse.ParseConfig;
@@ -68,6 +70,9 @@ public class TaskDispatcher {
             case ConfigReader.PARSE:
                 initParseTask();
                 break;
+            case ConfigReader.REPLAY:
+                initReplayTask();
+                break;
             default:
                 LOGGER.error(" The parameter '-t' value is incorrect, it must be one of the transcribe or parse or"
                         + " replay.");
@@ -89,5 +94,11 @@ public class TaskDispatcher {
         } else {
             this.task = new GeneralLogTask(transcribeConfig);
         }
+    }
+
+    private void initReplayTask() {
+        ReplayConfig replayConfig = ConfigReader.initReplayConfig(configPath);
+        ReplayFactory.buildStrategyMap(replayConfig);
+        this.task = ReplayFactory.getReplayStrategy(replayConfig.getStorageMode());
     }
 }

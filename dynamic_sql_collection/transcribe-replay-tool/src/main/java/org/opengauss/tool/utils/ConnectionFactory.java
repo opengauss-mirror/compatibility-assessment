@@ -41,6 +41,9 @@ public final class ConnectionFactory {
     public static final String OPENGAUSS = "openGauss";
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionFactory.class);
     private static final String MYSQL_JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+    private static final String CLUSTER_JDBC_URL = "jdbc:postgresql://%s/%s?currentSchema=%s&targetServerType=master"
+            + "&loggerLevel=error";
+
 
     private static Connection createMysqlConnection(DatabaseConfig config) {
         String url = "jdbc:mysql://" + config.getDbIp() + ":" + config.getDbPort()
@@ -96,7 +99,63 @@ public final class ConnectionFactory {
     }
 
     private static Connection createOpengaussConnection(DatabaseConfig config) {
-        // todo
-        return null;
+        String sourceUrl = getSourceUrl(config);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection(sourceUrl, config.getUsername(), config.getPassword());
+        } catch (SQLException e) {
+            LOGGER.error("Unable to connect to database {}:{}, error message is: {}", config.getDbIp(),
+                    config.getDbPort(), e.getMessage());
+            System.exit(-1);
+        }
+        return connection;
+    }
+
+    /**
+     * refreshClusterOpgsConnection
+     *
+     * @param config config
+     * @return Connection
+     */
+    public static Connection refreshClusterOpgsConnection(DatabaseConfig config) {
+        String sourceUrl = getSourceUrl(config);
+        Connection connection = null;
+        int tryCount = 0;
+        while (connection == null && tryCount < 30) {
+            try {
+                Thread.sleep(10000);
+                LOGGER.info("try re-connect ing");
+                connection = DriverManager.getConnection(sourceUrl, config.getUsername(), config.getPassword());
+            } catch (SQLException | InterruptedException e) {
+                LOGGER.error("Unable to connect to database {}:{}, error message is: {}", config.getDbIp(),
+                        config.getDbPort(), e.getMessage());
+            }
+            tryCount++;
+        }
+        return connection;
+    }
+
+    private static String getSourceUrl(DatabaseConfig config) {
+        String sourceUrl;
+        String dbName = config.getDbName();
+        String schema = "public";
+        int pointIndex = dbName.indexOf(".");
+        if (pointIndex > -1) {
+            schema = dbName.split("\\.")[1];
+            dbName = dbName.split("\\.")[0];
+        }
+        if (config.isCluster()) {
+            String[] ipArray = config.getDbIp().split(",");
+            String[] portArray = config.getDbPort().split(",");
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < ipArray.length; i++) {
+                sb.append(ipArray[i]).append(":").append(portArray[i]).append(",");
+            }
+            sourceUrl = String.format(CLUSTER_JDBC_URL, sb.substring(0, sb.length() - 1), dbName, schema);
+        } else {
+            sourceUrl = "jdbc:postgresql://" + config.getDbIp() + ":" + config.getDbPort() + "/" + dbName
+                    + "?currentSchema=" + schema + "&loggerLevel=error";
+        }
+        return sourceUrl;
     }
 }
