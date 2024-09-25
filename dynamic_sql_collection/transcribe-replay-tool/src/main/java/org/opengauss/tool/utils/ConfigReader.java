@@ -15,7 +15,9 @@
 
 package org.opengauss.tool.utils;
 
+import org.apache.commons.lang3.StringUtils;
 import org.opengauss.tool.config.parse.ParseConfig;
+import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.config.transcribe.AttachConfig;
 import org.opengauss.tool.config.transcribe.GeneralLogConfig;
 import org.opengauss.tool.config.transcribe.TcpdumpConfig;
@@ -30,7 +32,10 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -360,6 +365,127 @@ public final class ConfigReader {
     public static final String SQL_TABLE_DROP = "sql.table.drop";
 
     /**
+     * replay
+     */
+    public static final String REPLAY = "replay";
+
+    /**
+     * serial replay
+     */
+    public static final String SERIAL_REPLAY = "serial";
+
+    /**
+     * parallel replay
+     */
+    public static final String PARALLEL_REPLAY = "parallel";
+
+    /**
+     * replay strategy list
+     */
+    public static final List<String> REPLAY_STRATEGY_LIST = Collections.unmodifiableList(
+            Arrays.asList(SERIAL_REPLAY, PARALLEL_REPLAY));
+
+    /**
+     * slow sql strategy list
+     */
+    public static final List<String> SLOW_SQL_STRATEGY_LIST = Collections.unmodifiableList(Arrays.asList("1", "2"));
+
+    /**
+     * sql replay database ip
+     */
+    public static final String SQL_REPLAY_DATABASE_IP = "sql.replay.database.ip";
+
+    /**
+     * sql replay database port"
+     */
+    public static final String SQL_REPLAY_DATABASE_PORT = "sql.replay.database.port";
+
+    /**
+     * sql replay database username
+     */
+    public static final String SQL_REPLAY_DATABASE_USERNAME = "sql.replay.database.username";
+
+    /**
+     * sql replay database name
+     */
+    public static final String SQL_REPLAY_DATABASE_SCHEMA_MAP = "sql.replay.database.schema.map";
+
+    /**
+     * sql replay database password
+     */
+    public static final String SQL_REPLAY_DATABASE_PASSWORD = "sql.replay.database.password";
+
+    /**
+     * sql replay strategy
+     */
+    public static final String SQL_REPLAY_STRATEGY = "sql.replay.strategy";
+
+    /**
+     * sql replay multiple
+     */
+    public static final String SQL_REPLAY_MULTIPLE = "sql.replay.multiple";
+
+    /**
+     * sql replay only query
+     */
+    public static final String SQL_REPLAY_ONLY_QUERY = "sql.replay.only.query";
+
+    /**
+     * sql replay source
+     */
+    public static final String SQL_REPLAY_SOURCE = "sql.replay.source";
+
+    /**
+     * sql replay parallel max pool size
+     */
+    public static final String SQL_REPLAY_MAX_POOL_SIZE = "sql.replay.parallel.max.pool.size";
+
+    /**
+     * sql replay slow time difference threshold
+     */
+    public static final String SQL_REPLAY_SLOW_SQL_TIME_DIFF = "sql.replay.slow.time.difference.threshold";
+
+    /**
+     * sql replay slow sql duration threshold
+     */
+    public static final String SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD = "sql.replay.slow.sql.duration.threshold";
+
+    /**
+     * sql replay slow sql csv dir
+     */
+    public static final String SQL_REPLAY_SLOW_SQL_CSV_DIR = "sql.replay.slow.sql.csv.dir";
+
+    /**
+     * sql replay slow sql rule
+     */
+    public static final String SQL_REPLAY_SLOW_SQL_RULE = "sql.replay.slow.sql.rule";
+
+    /**
+     * sql replay slow top number
+     */
+    public static final String SQL_REPLAY_SLOW_TOP_NUM = "sql.replay.slow.top.number";
+
+    /**
+     * sql replay draw threshold
+     */
+    public static final String SQL_REPLAY_DRAW_THRESHOLD = "sql.replay.draw.interval";
+
+    /**
+     * sql replay session white list
+     */
+    public static final String SQL_REPLAY_SESSION_WHITE_LIST = "sql.replay.session.white.list";
+
+    /**
+     * sql replay session black list
+     */
+    public static final String SQL_REPLAY_SESSION_BLACK_LIST = "sql.replay.session.black.list";
+
+    /**
+     * slow db
+     */
+    public static final String SLOW_DB = "slow_db";
+
+    /**
      * Initialize transcribe config
      *
      * @param configPath String the config path
@@ -436,6 +562,37 @@ public final class ConfigReader {
     private static void checkParseConfig(Properties props) {
         putParseConfig(props);
         String sqlStorageMode = checkSqlStorageMode(props);
+        if (JSON.equals(sqlStorageMode)) {
+            putSqlFileConfig(props);
+        } else {
+            putSqlDbConfig(props);
+        }
+        checkResult();
+    }
+
+    /**
+     * initReplayConfig
+     *
+     * @param configPath configPath
+     * @return ReplayConfig
+     */
+    public static ReplayConfig initReplayConfig(String configPath) {
+        Properties props = new Properties();
+        ReplayConfig config = new ReplayConfig();
+        try (InputStream input = Files.newInputStream(Paths.get(configPath))) {
+            props.load(input);
+            checkReplayConfig(props);
+            config.load(props);
+        } catch (IOException ex) {
+            LOGGER.error("IOException occurred while read config file {}.", configPath);
+        }
+        return config;
+    }
+
+    private static void checkReplayConfig(Properties props) {
+        putReplayConfig(props);
+        String sqlStorageMode = checkSqlStorageMode(props);
+        putTargetDbConfig(props);
         if (JSON.equals(sqlStorageMode)) {
             putSqlFileConfig(props);
         } else {
@@ -542,6 +699,37 @@ public final class ConfigReader {
         }
     }
 
+    private static void putReplayConfig(Properties props) {
+        CONFIG_MAP.put(SQL_REPLAY_STRATEGY, REPLAY_STRATEGY_LIST.contains(props.getProperty(SQL_REPLAY_STRATEGY)));
+        CONFIG_MAP.put(SQL_REPLAY_MULTIPLE, matchNumber(props.getProperty(SQL_REPLAY_MULTIPLE, "1")));
+        CONFIG_MAP.put(SQL_REPLAY_ONLY_QUERY, matchBoolean(props.getProperty(SQL_REPLAY_ONLY_QUERY)));
+        CONFIG_MAP.put(SQL_REPLAY_MAX_POOL_SIZE, matchNumber(props.getProperty(SQL_REPLAY_MAX_POOL_SIZE, "1")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_RULE, SLOW_SQL_STRATEGY_LIST.contains(
+                props.getProperty(SQL_REPLAY_SLOW_SQL_RULE, "2")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_TIME_DIFF, matchNumber(
+                props.getProperty(SQL_REPLAY_SLOW_SQL_TIME_DIFF, "1000")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, matchNumber(
+                props.getProperty(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, "3000")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_CSV_DIR, matchFilePath(props.getProperty(SQL_REPLAY_SLOW_SQL_CSV_DIR)));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_TOP_NUM, matchNumber(props.getProperty(SQL_REPLAY_SLOW_TOP_NUM, "5")));
+        CONFIG_MAP.put(SQL_REPLAY_DRAW_THRESHOLD, matchNumber(props.getProperty(SQL_REPLAY_DRAW_THRESHOLD, "1000")));
+        CONFIG_MAP.put(SQL_REPLAY_SESSION_WHITE_LIST, matchSessionList(
+                props.getProperty(SQL_REPLAY_SESSION_WHITE_LIST, "[]")));
+        CONFIG_MAP.put(SQL_REPLAY_SESSION_BLACK_LIST, matchSessionList(
+                props.getProperty(SQL_REPLAY_SESSION_BLACK_LIST, "[]")));
+    }
+
+    private static void putTargetDbConfig(Properties props) {
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_IP, matchIps(props.getProperty(SQL_REPLAY_DATABASE_IP)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_PORT, matchPorts(props.getProperty(SQL_REPLAY_DATABASE_PORT)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_SCHEMA_MAP, matchSchemaMap(
+                props.getProperty(SQL_REPLAY_DATABASE_SCHEMA_MAP)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_USERNAME, matchRegularString(
+                props.getProperty(SQL_REPLAY_DATABASE_USERNAME)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_PASSWORD, matchRegularString(
+                props.getProperty(SQL_REPLAY_DATABASE_PASSWORD)));
+    }
+
     private static String checkSqlStorageMode(Properties props) {
         String sqlStorageMode = props.getProperty(SQL_STORAGE_MODE, JSON);
         if (!sqlStorageMode.equals(JSON) && !sqlStorageMode.equals(DB)) {
@@ -616,6 +804,86 @@ public final class ConfigReader {
         }
         String regex = "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$";
         return timestamp.matches(regex);
+    }
+
+    private static Boolean matchSessionList(String sessionProp) {
+        if (StringUtils.isEmpty(sessionProp) || "[]".equals(sessionProp)) {
+            return true;
+        }
+        String[] sessionList = sessionProp.substring(1, sessionProp.length() - 1).split(";");
+        int portIndex;
+        String ip;
+        String port = null;
+        for (String session : sessionList) {
+            if (session.contains("[")) {
+                // ipv6
+                portIndex = session.indexOf("]:");
+                if (portIndex == -1) {
+                    ip = session.substring(1, session.length() - 1);
+                } else {
+                    ip = session.substring(1, portIndex);
+                    port = session.substring(portIndex + 2, session.length() - 1);
+                }
+            } else {
+                // ipv4
+                portIndex = session.indexOf(":");
+                if (portIndex == -1) {
+                    ip = session;
+                } else {
+                    ip = session.substring(0, portIndex);
+                    port = session.substring(portIndex + 1);
+                }
+            }
+            if (!matchIp(ip) || (port != null && !matchPort(port))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Boolean matchIps(String prop) {
+        String[] ipArray = prop.split(",");
+        if (ipArray.length == 0) {
+            return false;
+        }
+        for (String ip : ipArray) {
+            if (!matchIp(ip)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Boolean matchPorts(String prop) {
+        String[] portArray = prop.split(",");
+        if (portArray.length == 0) {
+            return false;
+        }
+        for (String port : portArray) {
+            if (!matchPort(port)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Boolean matchSchemaMap(String schemas) {
+        String[] schemaMapArray = schemas.split(";");
+        if (schemaMapArray.length == 0) {
+            return false;
+        }
+        for (String schemaMapStr : schemaMapArray) {
+            int separateIndex = schemaMapStr.indexOf(":");
+            if (separateIndex < 0) {
+                return false;
+            }
+            String mysqlSchema = schemaMapStr.substring(0, separateIndex);
+            String ogSchema = schemaMapStr.substring(separateIndex + 1);
+            if (!matchRegularString(mysqlSchema) || !matchRegularString(ogSchema)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Boolean matchPort(String port) {

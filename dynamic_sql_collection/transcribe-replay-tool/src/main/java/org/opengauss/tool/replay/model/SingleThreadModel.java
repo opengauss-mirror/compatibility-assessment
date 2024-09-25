@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2024-2024 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
+package org.opengauss.tool.replay.model;
+
+import org.opengauss.tool.replay.task.SingleReplayThread;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * SingleThreadModel
+ *
+ * @since 2024-07-01
+ */
+public class SingleThreadModel {
+    private static SingleThreadModel instance;
+
+
+    private final AtomicInteger threadCount;
+    private final ConcurrentMap<String, Integer> sessionThreadMap;
+    private final ConcurrentMap<Integer, SingleReplayThread> threadMap;
+
+    private SingleThreadModel() {
+        this.threadCount = new AtomicInteger(0);
+        this.sessionThreadMap = new ConcurrentHashMap<>();
+        this.threadMap = new ConcurrentHashMap<>();
+    }
+
+    /**
+     * get SingleThreadModel instance
+     *
+     * @return instance
+     */
+    public static synchronized SingleThreadModel getInstance() {
+        if (instance == null) {
+            instance = new SingleThreadModel();
+        }
+        return instance;
+    }
+
+    /**
+     * getThreadCount
+     *
+     * @return threadCount
+     */
+    public int getThreadCount() {
+        return threadCount.get();
+    }
+
+    /**
+     * incrementThreadCount
+     */
+    public void incrementThreadCount() {
+        threadCount.getAndIncrement();
+    }
+
+    /**
+     * decrementThreadCount
+     */
+    public void decrementThreadCount() {
+        threadCount.getAndDecrement();
+    }
+
+    /**
+     * putThreadMap
+     *
+     * @param threadId threadId
+     * @param thread thread
+     */
+    public void putThreadMap(int threadId, SingleReplayThread thread) {
+        threadMap.put(threadId, thread);
+    }
+
+    /**
+     * getThreadMap
+     *
+     * @return threadMap
+     */
+    public Map<Integer, SingleReplayThread> getThreadMap() {
+        return threadMap;
+    }
+
+    /**
+     * putSessionThreadMap
+     *
+     * @param session session
+     * @param threadId threadId
+     */
+    public void putSessionThreadMap(String session, int threadId) {
+        sessionThreadMap.put(session, threadId);
+    }
+
+    /**
+     * getSessionThreadMap
+     *
+     * @return sessionThreadMap
+     */
+    public Map<String, Integer> getSessionThreadMap() {
+        return sessionThreadMap;
+    }
+}
+

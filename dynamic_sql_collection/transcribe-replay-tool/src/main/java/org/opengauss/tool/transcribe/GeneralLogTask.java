@@ -117,12 +117,12 @@ public class GeneralLogTask extends TranscribeTask {
                 startIndex += count;
                 count = 0;
             } catch (SQLException e) {
-                DatabaseOperator.closePrepareStatement(ps);
+                DatabaseOperator.closeStatement(ps);
                 LOGGER.error("SQLException occurred while querying general sql, error message is: {}.", e.getMessage());
                 return;
             }
         }
-        DatabaseOperator.closePrepareStatement(ps);
+        DatabaseOperator.closeStatement(ps);
         DatabaseOperator.closeResultSet(res);
         DatabaseOperator.closeConnection(sourceConnection);
         stat();

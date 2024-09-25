@@ -198,8 +198,8 @@ public final class DatabaseOperator {
         } catch (SQLException e) {
             LOGGER.error("SQLException occurred while insert sql to database, error message is {}.", e.getMessage());
         }
-        closePrepareStatement(psPrimary);
-        closePrepareStatement(psForeign);
+        closeStatement(psPrimary);
+        closeStatement(psForeign);
     }
 
     /**
@@ -236,7 +236,7 @@ public final class DatabaseOperator {
             LOGGER.error("SQLException occurred while insert session information to database, error message is {}.",
                     e.getMessage());
         }
-        closePrepareStatement(psSession);
+        closeStatement(psSession);
     }
 
     /**
@@ -251,7 +251,7 @@ public final class DatabaseOperator {
      *
      * @param ps PreparedStatement the os
      */
-    public static void closePrepareStatement(PreparedStatement ps) {
+    public static void closeStatement(Statement ps) {
         if (ps == null) {
             return;
         }
