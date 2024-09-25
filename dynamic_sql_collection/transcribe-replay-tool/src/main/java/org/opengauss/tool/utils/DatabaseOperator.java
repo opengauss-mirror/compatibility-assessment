@@ -16,6 +16,7 @@
 package org.opengauss.tool.utils;
 
 import lombok.Data;
+
 import org.opengauss.tool.config.DatabaseConfig;
 import org.opengauss.tool.parse.object.PreparedValue;
 import org.opengauss.tool.parse.object.SessionInfo;
@@ -80,8 +81,8 @@ public final class DatabaseOperator {
     /**
      * Initialize storage
      *
-     * @param opengaussConfig     DatabaseConfig the openGauss connection config
-     * @param isNeedForeignTable    boolean the need foreign table
+     * @param opengaussConfig DatabaseConfig the openGauss connection config
+     * @param isNeedForeignTable boolean the need foreign table
      * @param shouldDropSameTable boolean the should drop same table
      */
     public void initStorage(DatabaseConfig opengaussConfig, boolean isNeedForeignTable, boolean shouldDropSameTable) {
@@ -104,7 +105,7 @@ public final class DatabaseOperator {
                     createTable(tableName, tableType);
                 } else {
                     LOGGER.error("The sql storage {} already exists, please change your table name to storage sql.",
-                            tableName);
+                        tableName);
                     System.exit(0);
                 }
             } else {
@@ -125,14 +126,14 @@ public final class DatabaseOperator {
         String createTable;
         if ("SQL".equals(tableType)) {
             createTable = String.format("create table %s(id bigint primary key, is_query boolean, "
-                    + "is_prepared boolean, session char(100), username char(100), schema char(100), sql text, "
-                    + "start_time bigint, end_time bigint, execute_duration bigint)", tableName);
+                + "is_prepared boolean, session char(100), username char(100), schema char(100), sql text, "
+                + "start_time bigint, end_time bigint, execute_duration bigint)", tableName);
         } else if ("PARA".equals(tableType)) {
-            createTable = String.format("create table %s(id bigint, para_index integer, "
-                    + "para_type char(10), para_value text)", tableName);
+            createTable = String.format(
+                "create table %s(id bigint, para_index integer, " + "para_type char(10), para_value text)", tableName);
         } else {
             createTable = String.format("create table %s(session char(100), username char(100), schema char(100))",
-                    tableName);
+                tableName);
         }
         executeSql(createTable);
     }
@@ -146,7 +147,7 @@ public final class DatabaseOperator {
 
     private boolean hasSameNameTable(String tableName) {
         String query = String.format("select * from pg_tables where schemaname='public' and tablename = '%s'",
-                tableName);
+            tableName);
         try (Statement stmt = connection.createStatement(); ResultSet resultSet = stmt.executeQuery(query)) {
             if (resultSet.next()) {
                 return true;
@@ -160,7 +161,7 @@ public final class DatabaseOperator {
     /**
      * Insert sql to database
      *
-     * @param sqlList       List<SqlObject> the sqlList
+     * @param sqlList List<SqlObject> the sqlList
      * @param isNeedParaTable boolean the need parameter table
      */
     public void insertSqlToDatabase(List<SqlInfo> sqlList, boolean isNeedParaTable) {
@@ -186,7 +187,7 @@ public final class DatabaseOperator {
                 if (sql.isPbe()) {
                     int index = 0;
                     for (PreparedValue parameter : sql.getParameterList()) {
-                        psForeign.setLong(1, sql.getSqlId());
+                        psForeign.setLong(1, sqlId);
                         psForeign.setInt(2, ++index);
                         psForeign.setString(3, parameter.getType());
                         psForeign.setString(4, parameter.getValue());
@@ -234,7 +235,7 @@ public final class DatabaseOperator {
             }
         } catch (SQLException e) {
             LOGGER.error("SQLException occurred while insert session information to database, error message is {}.",
-                    e.getMessage());
+                e.getMessage());
         }
         closeStatement(psSession);
     }
