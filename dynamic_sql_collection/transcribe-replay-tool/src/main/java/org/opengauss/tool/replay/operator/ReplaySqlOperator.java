@@ -270,6 +270,6 @@ public class ReplaySqlOperator {
     }
 
     private boolean isDmlSql(String sql) {
-        return DML_PATTERN.matcher(sql.toLowerCase(Locale.ROOT)).find(0);
+        return DML_PATTERN.matcher(sql.toLowerCase(Locale.ROOT)).matches();
     }
 }
