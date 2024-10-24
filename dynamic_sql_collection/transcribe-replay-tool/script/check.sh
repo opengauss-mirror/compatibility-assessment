@@ -1,26 +1,26 @@
 #!/bin/bash
 
 while true; do
-    # 检查transcribe-replay-tool-6.0.0.jar进程是否存在
-    if pgrep -f 'transcribe-replay-tool-6.0.0.jar' > /dev/null; then
-        echo "transcribe-replay-tool-6.0.0.jar process is running."
+    # 检查transcribe-replay-tool-7.0.0-RC1.jar进程是否存在
+    if pgrep -f 'transcribe-replay-tool-7.0.0-RC1.jar' > /dev/null; then
+        echo "transcribe-replay-tool-7.0.0-RC1.jar process is running."
         if pgrep tcpdump > /dev/null; then
             echo "tcpdump process is running."
             sleep 5
         else
-            echo "transcribe-replay-tool-6.0.0.jar is running but tcpdump process is not running. Killing it."
-            pkill -f "transcribe-replay-tool-6.0.0.jar"
+            echo "transcribe-replay-tool-7.0.0-RC1.jar is running but tcpdump process is not running. Killing it."
+            pkill -f "transcribe-replay-tool-7.0.0-RC1.jar"
             exit 0
         fi
     else
         # 检查tcpdump进程是否存在
         if pgrep tcpdump > /dev/null; then
-            echo "transcribe-replay-tool-6.0.0.jar is not running but tcpdump process is running. Killing it."
+            echo "transcribe-replay-tool-7.0.0-RC1.jar is not running but tcpdump process is running. Killing it."
             pkill tcpdump
             echo "tcpdump process killed. Exiting script."
             exit 0
         else
-            echo "Neither transcribe-replay-tool-6.0.0.jar nor tcpdump is running. Exiting script."
+            echo "Neither transcribe-replay-tool-7.0.0-RC1.jar nor tcpdump is running. Exiting script."
             exit 0
         fi
     fi
