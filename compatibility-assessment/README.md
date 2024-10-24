@@ -23,7 +23,7 @@ openGauss兼容性评估工具，支持从多个场景下获取sql语句进行�
 
 兼容性评估的结果包括完全兼容、语法兼容、不兼容、不支持评估。具体介绍参考https://gitee.com/opengauss/Plugin/tree/master/contrib/assessment
 
-社区提供兼容性评估工具软件包地址：https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/compatibility-assessment-6.0.0.tar.gz
+社区提供兼容性评估工具软件包地址：https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/compatibility-assessment-7.0.0-RC1.tar.gz
 
 #### 评估前准备
 
@@ -41,7 +41,7 @@ https://gitee.com/opengauss/Plugin/tree/master/contrib/assessment
 https://gitee.com/opengauss/compatibility-assessment.git
 ```
 
-进入compatibility-assessment目录，执行sh build.sh进行编译获得可执行jar包compatibility-assessment-6.0.0-exec.jar。
+进入compatibility-assessment目录，执行sh build.sh进行编译获得可执行jar包compatibility-assessment-7.0.0-RC1-exec.jar。
 
 java版本：open JDK11及以上
 
@@ -49,7 +49,7 @@ maven版本：3.6.3及以上
 
 #### 使用说明
 
-社区提供的兼容性评估工具软件包解压后包含start.sh，compatibility-assessment-6.0.0.jar和assessment,properties三个文件。
+社区提供的兼容性评估工具软件包解压后包含start.sh，compatibility-assessment-7.0.0-RC1.jar和assessment,properties三个文件。
 
 使用如下命令启动评估：
 
