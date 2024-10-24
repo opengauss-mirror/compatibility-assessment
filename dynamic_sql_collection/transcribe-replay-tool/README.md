@@ -78,7 +78,12 @@ SQL流量录制回放工具，可以录制源端数据库客户端的业务sql�
 
 ## 工具包介绍
 
-### transcribe-replay-tool-6.0.0.jar
+- 安装包获取
+~~~
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/transcribe-replay-tool-7.0.0-RC1.tar.gz
+~~~
+
+### transcribe-replay-tool-7.0.0-RC1.jar
 录制回放核心工具，用于调度各种插件进行录制，并负责解析网络数据包文件，以及sql回放。
 
 - 编译
@@ -134,7 +139,7 @@ mvn clean package
 ## 工具使用
 - 启动命令
 ~~~
-java -jar transcribe-replay-tool-6.0.0.jar -t [transcribe|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
+java -jar transcribe-replay-tool-7.0.0-RC1.jar -t [transcribe|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
 ~~~
 
 - 参数介绍
@@ -146,7 +151,7 @@ java -jar transcribe-replay-tool-6.0.0.jar -t [transcribe|parse|replay] -f [tran
 ### 录制端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-6.0.0.jar -t transcribe -f transcribe.properties
+java -jar transcribe-replay-tool-7.0.0-RC1.jar -t transcribe -f transcribe.properties
 ~~~
 
 #### 录制端配置项
@@ -271,7 +276,7 @@ sql.table.drop=false
 ### 解析端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-6.0.0.jar -t parse -f parse.properties
+java -jar transcribe-replay-tool-7.0.0-RC1.jar -t parse -f parse.properties
 ~~~
 
 #### 解析端配置项
@@ -317,7 +322,7 @@ sql.table.drop=false
 ### 回放端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-6.0.0.jar -t replay -f replay.properties
+java -jar transcribe-replay-tool-7.0.0-RC1.jar -t replay -f replay.properties
 ~~~
 
 #### 回放端配置项
