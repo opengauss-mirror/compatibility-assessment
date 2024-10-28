@@ -32,6 +32,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -41,7 +42,7 @@ import java.util.regex.Pattern;
  */
 public class ReplaySqlOperator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReplaySqlOperator.class);
-    private static final Pattern DML_PATTERN = Pattern.compile("^update|select");
+    private static final Pattern DML_PATTERN = Pattern.compile("^(update|select|insert|delete)");
 
     private final ReplayLogOperator replayLogOperator;
     private final ReplayConfig replayConfig;
@@ -94,8 +95,7 @@ public class ReplaySqlOperator {
         return response;
     }
 
-    private ExecuteResponse execute(Connection replayConn, SqlModel sqlModel, String sql)
-            throws SQLException {
+    private ExecuteResponse execute(Connection replayConn, SqlModel sqlModel, String sql) throws SQLException {
         String explainStr = getExplainSb(replayConn, sql);
         int lastColonsIndex = explainStr.lastIndexOf(":");
         int msIndex = explainStr.lastIndexOf("ms");
@@ -103,8 +103,7 @@ public class ReplaySqlOperator {
         return getExecuteResponse(sqlModel, duration, explainStr);
     }
 
-    private ExecuteResponse getExecuteResponse(SqlModel sqlModel, long duration,
-                                               String explain) {
+    private ExecuteResponse getExecuteResponse(SqlModel sqlModel, long duration, String explain) {
         ExecuteResponse response = new ExecuteResponse();
         response.setOpgsDuration(duration);
         if (isSlowSql(duration, sqlModel.getMysqlDuration())) {
@@ -170,8 +169,9 @@ public class ReplaySqlOperator {
     }
 
     private boolean isSlowSql(long opgsDuration, long mysqlDuration) {
-        return replayConfig.getSlowSqlRule() == 1 ? opgsDuration - mysqlDuration > replayConfig.getDurationDiff()
-                : opgsDuration > replayConfig.getSlowThreshold();
+        return replayConfig.getSlowSqlRule() == 1
+            ? opgsDuration - mysqlDuration > replayConfig.getDurationDiff()
+            : opgsDuration > replayConfig.getSlowThreshold();
     }
 
     private String getExplainSb(Connection replayConn, String sql) throws SQLException {
@@ -235,8 +235,8 @@ public class ReplaySqlOperator {
      */
     public ResultSet getSqlResultSet(Connection conn, String tableName, int pagination, int page) throws SQLException {
         int offset = (page - 1) * pagination;
-        String querySql = String.format(Locale.ROOT, "select * from %s order by id limit %d offset %d",
-                tableName, pagination, offset);
+        String querySql = String.format(Locale.ROOT, "select * from %s order by id limit %d offset %d", tableName,
+            pagination, offset);
         ResultSet rs = null;
         if (conn != null) {
             Statement statement = conn.createStatement();
@@ -256,20 +256,23 @@ public class ReplaySqlOperator {
         if (isInvalidSession(sqlModel) || (replayConfig.isOnlyReplayQuery() && !sqlModel.isQuery())) {
             return true;
         }
-        return sql.startsWith("/*") || sql.startsWith("show ") || sql.startsWith("set")
-                || sql.contains("@@session.transaction_read_only");
+        return sql.contains("mysql-connector-java") || sql.startsWith("show ") || sql.startsWith("set") || sql.contains(
+            "@@session.transaction_read_only");
     }
 
     private boolean isInvalidSession(SqlModel sqlModel) {
-        return !replayConfig.getSessionBlackList().isEmpty() && replayConfig.getSessionBlackList().stream()
-                .map(session -> session.replace("[", "").replace("]", ""))
-                .anyMatch(session -> sqlModel.getSession().startsWith(session))
-                || !replayConfig.getSessionWhiteList().isEmpty() && replayConfig.getSessionWhiteList().stream()
-                .map(session -> session.replace("[", "").replace("]", ""))
-                .noneMatch(session -> sqlModel.getSession().startsWith(session));
+        return !replayConfig.getSessionBlackList().isEmpty() && replayConfig.getSessionBlackList()
+            .stream()
+            .map(session -> session.replace("[", "").replace("]", ""))
+            .anyMatch(session -> sqlModel.getSession().startsWith(session))
+            || !replayConfig.getSessionWhiteList().isEmpty() && replayConfig.getSessionWhiteList()
+            .stream()
+            .map(session -> session.replace("[", "").replace("]", ""))
+            .noneMatch(session -> sqlModel.getSession().startsWith(session));
     }
 
     private boolean isDmlSql(String sql) {
-        return DML_PATTERN.matcher(sql.toLowerCase(Locale.ROOT)).matches();
+        Matcher matcher = DML_PATTERN.matcher(sql.toLowerCase(Locale.ROOT));
+        return matcher.find() && matcher.start() == 0;
     }
 }
