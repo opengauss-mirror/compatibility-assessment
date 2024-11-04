@@ -27,6 +27,7 @@ import org.opengauss.tool.utils.CommonParser;
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.DatabaseOperator;
 import org.opengauss.tool.utils.FileOperator;
+import org.opengauss.tool.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,45 +116,90 @@ public class ParseTask extends WorkTask {
     }
 
     private void readPcapFile() {
+        long startTimeMillis = System.currentTimeMillis();
         File dir = new File(config.getPacketFilePath());
-        List<File> files = getValidPacketFiles(dir);
         startTime = LocalDateTime.now();
-        for (File pcapFile : files) {
-            try (FileInputStream fis = new FileInputStream(pcapFile)) {
-                byte[] pcapHeader = new byte[ProtocolConstant.PCAP_HEADER_LENGTH];
-                fis.read(pcapHeader);
-                int id = 0;
-                while (true) {
-                    if (packetQueue.size() > config.getQueueSizeLimit()) {
-                        sleep(1000);
-                        continue;
-                    }
-                    byte[] packetHeader = new byte[ProtocolConstant.PACKET_HEADER_LENGTH];
-                    int flag = fis.read(packetHeader);
-                    if (flag == -1) {
-                        break;
-                    }
-                    id++;
-                    long timestamp = CommonParser.parseTimestamp(packetHeader);
-                    String hexCap = CommonParser.parseByLittleEndian(packetHeader, 8, 12);
-                    int cap = Integer.parseInt(hexCap, 16);
-                    String hexLen = CommonParser.parseByLittleEndian(packetHeader, 12, 16);
-                    int len = Integer.parseInt(hexLen, 16);
-                    byte[] dataFlame = new byte[len];
-                    fis.read(dataFlame);
-                    if (len <= ProtocolConstant.ETHERNET_HEADER_LENGTH) {
-                        continue;
-                    }
-                    packetQueue.offer(new OriginPacket(pcapFile.getName(), id, dataFlame, timestamp));
-                }
-            } catch (IOException e) {
-                LOGGER.error("IOException occurred while reading the file {}, error message is: {}.",
-                        pcapFile.getName(), e.getMessage());
+        int point = 0;
+        while (true) {
+            List<File> files = getValidPacketFiles(dir);
+            if (files.isEmpty() && !FileUtils.isFinished(config.getPacketFilePath())) {
+                sleep(1000);
+                continue;
             }
-            LOGGER.info("Have read the file {} completed.", pcapFile.getName());
+
+            if (FileUtils.isFinished(config.getPacketFilePath())) {
+                if (config.isDropTcpdumpFile()) {
+                    parseAndDeleteFile(files, files.size());
+                } else {
+                    parseFile(files, files.size(), point);
+                }
+                break;
+            }
+
+            if (config.isDropTcpdumpFile()) {
+                parseAndDeleteFile(files, files.size() - 1);
+            } else {
+                parseFile(files, files.size() - 1, point);
+                point = files.size() - 1;
+            }
+            int currentFileCount = getValidPacketFiles(dir).size();
+            if (currentFileCount == files.size() && !FileUtils.isFinished(config.getPacketFilePath())) {
+                long readTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
+                if (config.getParseMaxTime() > 0 && readTime >= config.getParseMaxTime()) {
+                    break;
+                }
+            }
         }
         isReadFilesFinished.set(true);
         LOGGER.info("All packet files have been loaded.");
+    }
+
+    private void parseAndDeleteFile(List<File> files, int size) {
+        for (int order = 0; order < size; order++) {
+            splitPacket(files.get(order));
+            files.get(order).delete();
+        }
+    }
+
+    private void parseFile(List<File> files, int size, int point) {
+        for (int order = point; order < size; order++) {
+            splitPacket(files.get(order));
+        }
+    }
+
+    private void splitPacket(File file) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] pcapHeader = new byte[ProtocolConstant.PCAP_HEADER_LENGTH];
+            fis.read(pcapHeader);
+            int id = 0;
+            while (true) {
+                if (packetQueue.size() > config.getQueueSizeLimit()) {
+                    sleep(1000);
+                    continue;
+                }
+                byte[] packetHeader = new byte[ProtocolConstant.PACKET_HEADER_LENGTH];
+                int flag = fis.read(packetHeader);
+                if (flag == -1) {
+                    break;
+                }
+                id++;
+                long timestamp = CommonParser.parseTimestamp(packetHeader);
+                String hexCap = CommonParser.parseByLittleEndian(packetHeader, 8, 12);
+                int cap = Integer.parseInt(hexCap, 16);
+                String hexLen = CommonParser.parseByLittleEndian(packetHeader, 12, 16);
+                int len = Integer.parseInt(hexLen, 16);
+                byte[] dataFlame = new byte[len];
+                fis.read(dataFlame);
+                if (len <= ProtocolConstant.ETHERNET_HEADER_LENGTH) {
+                    continue;
+                }
+                packetQueue.offer(new OriginPacket(file.getName(), id, dataFlame, timestamp));
+            }
+        } catch (IOException e) {
+            LOGGER.error("IOException occurred while reading the file {}, error message is: {}.",
+                    file.getName(), e.getMessage());
+        }
+        LOGGER.info("Have read the file {} completed.", file.getName());
     }
 
     private List<File> getValidPacketFiles(File dir) {
@@ -243,6 +289,7 @@ public class ParseTask extends WorkTask {
         } else {
             ParseThread parseThread = databaseTypeEnum.getSuitableProtocolParser(clientId);
             parseThread.addDataToQueue(packetData);
+            parseThread.setFileConfig(config.getResultFileConfig());
             parseThread.start();
             THREAD_MAP.put(clientId, parseThread);
         }
@@ -328,10 +375,22 @@ public class ParseTask extends WorkTask {
                 sqlList.clear();
             }
         } while (!isCommitSqlFinished.get());
+        storageFinishedSql();
         addIndexToTable();
         LOGGER.info("All sql information have been committed.");
         stat();
         threadPool.shutdown();
+    }
+
+    private void storageFinishedSql() {
+        List<SqlInfo> sqlList = new ArrayList<>();
+        SqlInfo endInfo = new SqlInfo();
+        endInfo.setSql("finished");
+        sqlList.add(endInfo);
+        storageSql(sqlList);
+        if (config.getStorageMode().equals(ConfigReader.JSON)) {
+            fileOperator.sendFinishedFlag();
+        }
     }
 
     private void mergeThreadSql(List<SqlInfo> sqlList, BlockingQueue<ParseThread> parseThreadQueue, long minSqlId) {

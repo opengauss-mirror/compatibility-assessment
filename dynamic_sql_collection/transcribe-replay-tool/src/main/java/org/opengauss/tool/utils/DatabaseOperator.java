@@ -88,7 +88,7 @@ public final class DatabaseOperator {
     public void initStorage(DatabaseConfig opengaussConfig, boolean isNeedForeignTable, boolean shouldDropSameTable) {
         String tableName = opengaussConfig.getTableName();
         initSqlTable(tableName, "SQL", shouldDropSameTable);
-        this.insertToSqlTable = String.format("insert into %s values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", tableName);
+        this.insertToSqlTable = String.format("insert into %s values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", tableName);
         if (isNeedForeignTable) {
             initSqlTable(tableName + "_paras", "PARA", shouldDropSameTable);
             this.insertToParaTable = String.format("insert into %s values(?, ?, ?, ?)", tableName + "_paras");
@@ -125,7 +125,7 @@ public final class DatabaseOperator {
     private void createTable(String tableName, String tableType) throws SQLException {
         String createTable;
         if ("SQL".equals(tableType)) {
-            createTable = String.format("create table %s(id bigint primary key, is_query boolean, "
+            createTable = String.format("create table %s(id bigint primary key, packet_id bigint, is_query boolean, "
                 + "is_prepared boolean, session char(100), username char(100), schema char(100), sql text, "
                 + "start_time bigint, end_time bigint, execute_duration bigint)", tableName);
         } else if ("PARA".equals(tableType)) {
@@ -174,15 +174,16 @@ public final class DatabaseOperator {
             psPrimary = connection.prepareStatement(insertToSqlTable);
             for (SqlInfo sql : sqlList) {
                 psPrimary.setLong(1, ++sqlId);
-                psPrimary.setBoolean(2, sql.isQuery());
-                psPrimary.setBoolean(3, sql.isPbe());
-                psPrimary.setString(4, sql.getSessionId());
-                psPrimary.setString(5, sql.getUsername());
-                psPrimary.setString(6, sql.getSchema());
-                psPrimary.setString(7, sql.getSql());
-                psPrimary.setLong(8, sql.getStartTime());
-                psPrimary.setLong(9, sql.getEndTime());
-                psPrimary.setLong(10, sql.getExecuteDuration());
+                psPrimary.setLong(2, sql.getSqlId());
+                psPrimary.setBoolean(3, sql.isQuery());
+                psPrimary.setBoolean(4, sql.isPbe());
+                psPrimary.setString(5, sql.getSessionId());
+                psPrimary.setString(6, sql.getUsername());
+                psPrimary.setString(7, sql.getSchema());
+                psPrimary.setString(8, sql.getSql());
+                psPrimary.setLong(9, sql.getStartTime());
+                psPrimary.setLong(10, sql.getEndTime());
+                psPrimary.setLong(11, sql.getExecuteDuration());
                 psPrimary.executeUpdate();
                 if (sql.isPbe()) {
                     int index = 0;

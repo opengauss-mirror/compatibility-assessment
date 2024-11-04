@@ -26,6 +26,7 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -64,7 +65,10 @@ public class ReplayJsonTask extends ReplayMainTask {
                     + "parseThread " + t.getName() + e.getMessage()));
             parseThread.start();
             while (!isFileParseEnd.get() || !sqlModelListQueue.isEmpty()) {
-                List<SqlModel> sqlModelList = sqlModelListQueue.take();
+                List<SqlModel> sqlModelList = sqlModelListQueue.poll(1, TimeUnit.SECONDS);
+                if (sqlModelList == null) {
+                    continue;
+                }
                 processModel.addSqlCount(sqlModelList.size());
                 for (int i = 0; i < sqlModelList.size(); i++) {
                     if (isFileParseEnd.get() && sqlModelListQueue.isEmpty() && i == sqlModelList.size() - 1) {
@@ -81,16 +85,40 @@ public class ReplayJsonTask extends ReplayMainTask {
     }
 
     private void parseFile() {
-        int fileCount = FileUtils.getFileCount(replayConfig);
-        if (fileCount == 0) {
-            LOGGER.error("file count is 0, please check sql.file.path and sql.file.name");
-            System.exit(-1);
+        int point = 0;
+        long startTimeMillis = System.currentTimeMillis();
+        while (true) {
+            int fileCount = FileUtils.getFileCount(replayConfig);
+            if (fileCount == 0 && !FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+                sleep(1000);
+                continue;
+            }
+            if (FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+                pushQueue(fileCount, point);
+                isFileParseEnd.set(true);
+                break;
+            }
+
+            pushQueue(fileCount - 1, point);
+            point = fileCount - 1;
+            int currentFileCount = FileUtils.getFileCount(replayConfig);
+            if (currentFileCount == fileCount && !FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+                long replayTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
+                if (replayConfig.getReplayMaxTime() > 0 && replayTime >= replayConfig.getReplayMaxTime()) {
+                    pushQueue(fileCount, point);
+                    isFileParseEnd.set(true);
+                    break;
+                }
+            }
         }
+    }
+
+    private void pushQueue(int fileCount, int point) {
         String fileTemplate = replayConfig.getFileCatalogue() + File.separator + replayConfig.getFileName()
                 + "-" + "%d" + ".json";
         Runtime runtime = Runtime.getRuntime();
         try {
-            for (int order = 1; order <= fileCount; order++) {
+            for (int order = point + 1; order <= fileCount; order++) {
                 String filePath = String.format(fileTemplate, order);
                 int waitCount = 0;
                 while (runtime.freeMemory() < MIN_FREE_MEMORY) {
@@ -103,10 +131,10 @@ public class ReplayJsonTask extends ReplayMainTask {
                 }
                 List<List<SqlModel>> sqlModelLists = FileUtils.parseFile(filePath);
                 for (List<SqlModel> sqlModelList : sqlModelLists) {
+                    if (sqlModelList.isEmpty()) {
+                        continue;
+                    }
                     sqlModelListQueue.put(sqlModelList);
-                }
-                if (order == fileCount) {
-                    isFileParseEnd.set(true);
                 }
             }
         } catch (InterruptedException e) {

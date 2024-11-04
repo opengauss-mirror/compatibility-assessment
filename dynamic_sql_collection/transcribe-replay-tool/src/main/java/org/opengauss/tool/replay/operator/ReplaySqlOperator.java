@@ -15,17 +15,27 @@
 
 package org.opengauss.tool.replay.operator;
 
+import org.apache.commons.lang3.StringUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.factory.ReplayConnectionFactory;
 import org.opengauss.tool.replay.model.ExecuteResponse;
 import org.opengauss.tool.replay.model.ParamModel;
 import org.opengauss.tool.replay.model.ParameterTypeEnum;
 import org.opengauss.tool.replay.model.SqlModel;
+import org.opengauss.tool.replay.model.ResultModel;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -33,8 +43,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * ReplaySqlOperator
@@ -48,6 +63,9 @@ public class ReplaySqlOperator {
     private final ReplayLogOperator replayLogOperator;
     private final ReplayConfig replayConfig;
     private final SlowSqlOperator slowSqlOperator;
+    private int resultFilePoint = 0;
+    private List<ResultModel> resultModels = new ArrayList<>();
+    private Map<Long, ResultModel> resultMap = new HashMap<>();
 
     /**
      * constructor
@@ -58,6 +76,15 @@ public class ReplaySqlOperator {
         this.replayConfig = replayConfig;
         slowSqlOperator = new SlowSqlOperator(replayConfig);
         replayLogOperator = new ReplayLogOperator();
+    }
+
+    /**
+     * getReplayConfig
+     *
+     * @return ReplayConfig
+     */
+    public ReplayConfig getReplayConfig() {
+        return replayConfig;
     }
 
     /**
@@ -80,6 +107,10 @@ public class ReplaySqlOperator {
                 executeDdl(sqlModel, preSqlStmt);
             }
             DatabaseOperator.closeStatement(preSqlStmt);
+            if (sqlModel.isQuery() && replayConfig.isCompareResult()) {
+                List<List<String>> data = getPrepareData(replayConn, sqlModel);
+                compareSelectResult(sqlModel, data);
+            }
         } catch (SQLException e) {
             if (replayConfig.getTargetDbConfig().isCluster() && e.getMessage().contains("connection")) {
                 // 主备倒换 重建数据库连接 重新执行当前语句
@@ -218,6 +249,10 @@ public class ReplaySqlOperator {
                 response = execute(replayConn, sqlModel, sql);
             }
             DatabaseOperator.closeStatement(stmt);
+            if (sqlModel.isQuery() && replayConfig.isCompareResult()) {
+                List<List<String>> data = getStmtData(replayConn, sqlModel.getSql());
+                compareSelectResult(sqlModel, data);
+            }
         } catch (SQLException e) {
             if (replayConfig.getTargetDbConfig().isCluster() && e.getMessage().contains("connection")) {
                 // 主备倒换 重建数据库连接 重新执行当前语句
@@ -280,6 +315,127 @@ public class ReplaySqlOperator {
         return explainSb.toString();
     }
 
+    private void compareSelectResult(SqlModel sqlModel, List<List<String>> data) throws SQLException {
+        if (resultFilePoint > 0 && resultMap.isEmpty()) {
+            replayLogOperator.printNullDataDiffLog(sqlModel, data);
+            return;
+        }
+        while (!resultMap.containsKey(sqlModel.getPacketId())) {
+            readResultFile();
+            if (resultMap.isEmpty()) {
+                replayLogOperator.printNullDataDiffLog(sqlModel, data);
+                return;
+            }
+        }
+
+        ResultModel resultModel = resultMap.get(sqlModel.getPacketId());
+        List<List<String>> sourceResult = new ArrayList<>();
+        JSONArray array = resultModel.getData();
+        for (int i = 0; i < array.length(); i++) {
+            JSONArray rowArr = array.getJSONArray(i);
+            List<String> row = new ArrayList<>();
+            for (int j = 0; j < rowArr.length(); j++) {
+                row.add(rowArr.get(j).toString());
+            }
+            sourceResult.add(row);
+        }
+        if (data.size() != sourceResult.size() || !data.equals(sourceResult)) {
+            replayLogOperator.printDataDiffLog(sqlModel, sourceResult, data);
+        }
+    }
+
+    private List<List<String>> getStmtData(Connection replayConn, String sql) throws SQLException {
+        Statement st = null;
+        ResultSet rs = null;
+        List<List<String>> data = new ArrayList<>();
+        try {
+            st = replayConn.createStatement();
+            rs = st.executeQuery(sql);
+            int cols = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                List<String> row = new ArrayList<>();
+                for (int i = 1; i <= cols; i++) {
+                    row.add(rs.getString(i));
+                }
+                data.add(row);
+            }
+        } finally {
+            DatabaseOperator.closeResultSet(rs);
+            DatabaseOperator.closeStatement(st);
+        }
+        return data;
+    }
+
+    private List<List<String>> getPrepareData(Connection replayConn, SqlModel sqlModel) throws SQLException {
+        PreparedStatement preSqlStmt = null;
+        ResultSet rs = null;
+        List<List<String>> data = new ArrayList<>();
+        try {
+            preSqlStmt = replayConn.prepareStatement(sqlModel.getSql());
+            int paraCount = preSqlStmt.getParameterMetaData().getParameterCount();
+            List<ParamModel> paraList = sqlModel.getParameters();
+            if (paraCount == paraList.size()) {
+                bindParameters(preSqlStmt, paraList);
+            } else {
+                for (int i = 0; i < paraList.size(); i++) {
+                    ParamModel parameter = paraList.get(i);
+                    ParameterTypeEnum type = ParameterTypeEnum.fromTypeName(parameter.getType());
+                    type.setParam(preSqlStmt, parameter.getId() % paraCount == 0 ? paraCount
+                                    : parameter.getId() % paraCount, parameter.getValue());
+                }
+            }
+            rs = preSqlStmt.executeQuery();
+            int cols = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                List<String> row = new ArrayList<>();
+                for (int i = 1; i <= cols; i++) {
+                    row.add(rs.getString(i));
+                }
+                data.add(row);
+            }
+        } finally {
+            DatabaseOperator.closeResultSet(rs);
+            DatabaseOperator.closeStatement(preSqlStmt);
+        }
+        return data;
+    }
+
+    private void readResultFile() {
+        resultFilePoint++;
+        resultModels.clear();
+        String filePath = replayConfig.getSelectResultPath() + File.separator
+                + replayConfig.getResultFileName() + "-" + resultFilePoint + ".json";
+        LOGGER.info("read result file:{} start", filePath);
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(filePath));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (StringUtils.isNotEmpty(line)) {
+                    JSONObject jsonObject = new JSONObject(line);
+                    ResultModel resultModel = new ResultModel(jsonObject);
+                    resultModels.add(resultModel);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            LOGGER.error("File not found. Error message:{}", e.getMessage());
+        } catch (IOException | JSONException e) {
+            LOGGER.error("read result file failed. Error message:{}", e.getMessage());
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    LOGGER.error("Close file failed. Error message:{}", e.getMessage());
+                }
+            }
+        }
+
+        resultMap = resultModels.stream().collect(Collectors.toMap(ResultModel::getSqlPacketId,
+                result -> result));
+    }
+
     private String executeAndGetExplain(PreparedStatement preparedStatement) throws SQLException {
         ResultSet explainRs = null;
         StringBuffer explainSb = new StringBuffer();
@@ -331,14 +487,13 @@ public class ReplaySqlOperator {
      * @param conn connection
      * @param tableName tableName
      * @param pagination pagination
-     * @param page page
+     * @param point point
      * @return resultSet
      * @throws SQLException SQLException
      */
-    public ResultSet getSqlResultSet(Connection conn, String tableName, int pagination, int page) throws SQLException {
-        int offset = (page - 1) * pagination;
-        String querySql = String.format(Locale.ROOT, "select * from %s order by id limit %d offset %d", tableName,
-            pagination, offset);
+    public ResultSet getSqlResultSet(Connection conn, String tableName, int pagination, int point) throws SQLException {
+        String querySql = String.format(Locale.ROOT, "select * from %s order by id limit %d offset %d",
+                tableName, pagination, point);
         ResultSet rs = null;
         if (conn != null) {
             Statement statement = conn.createStatement();

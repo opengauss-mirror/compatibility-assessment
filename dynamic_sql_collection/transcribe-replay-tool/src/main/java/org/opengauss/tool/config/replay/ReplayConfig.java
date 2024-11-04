@@ -52,6 +52,11 @@ public class ReplayConfig {
     private Map<String, String> schemaMap;
     private DatabaseConfig sourceDbConfig;
     private DatabaseConfig targetDbConfig;
+    private int replayMaxTime;
+    private boolean isSourceTimeInterval;
+    private boolean isCompareResult;
+    private String selectResultPath;
+    private String resultFileName;
 
     /**
      * load replayConfig from props
@@ -77,6 +82,12 @@ public class ReplayConfig {
         this.sessionWhiteList = getSessionList(props.getProperty(ConfigReader.SQL_REPLAY_SESSION_WHITE_LIST, "[]"));
         this.sessionBlackList = getSessionList(props.getProperty(ConfigReader.SQL_REPLAY_SESSION_BLACK_LIST, "[]"));
         this.schemaMap = getSchemaMapping(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_SCHEMA_MAP));
+        this.replayMaxTime = Integer.parseInt(props.getProperty(ConfigReader.REPLAY_MAX_TIME, "0"));
+        this.isSourceTimeInterval = Boolean.parseBoolean(
+                props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "true"));
+        this.isCompareResult = Boolean.parseBoolean(props.getProperty(ConfigReader.COMPARE_SELECT_RESULT, "false"));
+        this.selectResultPath = props.getProperty(ConfigReader.SELECT_RESULT_PATH);
+        this.resultFileName = props.getProperty(ConfigReader.RESULT_FILE_NAME);
         targetDbConfig = new DatabaseConfig();
         targetDbConfig.setDbIp(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_IP));
         targetDbConfig.setDbPort(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_PORT));

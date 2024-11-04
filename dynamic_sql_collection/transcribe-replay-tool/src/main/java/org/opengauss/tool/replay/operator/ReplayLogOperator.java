@@ -39,6 +39,8 @@ public class ReplayLogOperator {
             LoggerFactory.getLogger("org.opengauss.tools.replay.SlowSqlLogger");
     private static final Logger TOP_SLOW_SQL_LOGGER =
             LoggerFactory.getLogger("org.opengauss.tools.replay.TopSlowSqlLogger");
+    private static final Logger DATA_DIFF_LOGGER =
+            LoggerFactory.getLogger("org.opengauss.tools.replay.DataDiffLogger");
     private static final Logger SUMMARY_LOGGER = LoggerFactory.getLogger("org.opengauss.tools.replay.Summary");
     private static final int SUFFIX_LENGTH = 9;
 
@@ -104,6 +106,45 @@ public class ReplayLogOperator {
                             + "---------------------------------------------------------------------------"
             );
         }
+    }
+
+    /**
+     * print data diff log
+     *
+     * @param sqlModel sqlModel
+     * @param sourceResult sourceResult
+     * @param targetResult targetResult
+     */
+    public void printDataDiffLog(SqlModel sqlModel, List<List<String>> sourceResult, List<List<String>> targetResult) {
+        DATA_DIFF_LOGGER.error("{}Sql Id is: {} {}SqlPacket Id is: {} {}Sql is: {} {}Sql Parameters: {} "
+                        + "{}SourceResult count is: {} {}TargetResult count is: {} {}SourceResult is: {} "
+                        + "{}TargetResult is: {}",
+                System.lineSeparator() + "        ", sqlModel.getId(),
+                System.lineSeparator() + "        ", sqlModel.getPacketId(),
+                System.lineSeparator() + "        ", sqlModel.getSql(),
+                System.lineSeparator() + "        ", sqlModel.getParameters().toString(),
+                System.lineSeparator() + "        ", sourceResult.size(),
+                System.lineSeparator() + "        ", targetResult.size(),
+                System.lineSeparator() + "        ", sourceResult,
+                System.lineSeparator() + "        ", targetResult);
+    }
+
+    /**
+     * print null data diff log
+     *
+     * @param sqlModel sqlModel
+     * @param targetResult targetResult
+     */
+    public void printNullDataDiffLog(SqlModel sqlModel, List<List<String>> targetResult) {
+        DATA_DIFF_LOGGER.error("{}Sql Id is: {} {}SqlPacket Id is: {} {}Sql is: {} {}Sql Parameters: {} "
+                        + "{}SourceResult is: null {}TargetResult count is: {} {}TargetResult is: {}",
+                System.lineSeparator() + "        ", sqlModel.getId(),
+                System.lineSeparator() + "        ", sqlModel.getPacketId(),
+                System.lineSeparator() + "        ", sqlModel.getSql(),
+                System.lineSeparator() + "        ", sqlModel.getParameters().toString(),
+                System.lineSeparator() + "        ",
+                System.lineSeparator() + "        ", targetResult.size(),
+                System.lineSeparator() + "        ", targetResult);
     }
 
     /**

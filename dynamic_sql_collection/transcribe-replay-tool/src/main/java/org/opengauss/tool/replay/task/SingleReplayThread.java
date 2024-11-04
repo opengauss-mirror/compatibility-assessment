@@ -61,6 +61,8 @@ public class SingleReplayThread extends ReplayThread {
     private final ReplaySqlOperator replaySqlOperator;
     private final ReplayLogOperator replayLogOperator;
     private final SingleThreadModel singleThreadModel;
+    private long preStartTime = 0L;
+    private long replyTime = 0L;
 
     /**
      * init replay thread
@@ -152,6 +154,9 @@ public class SingleReplayThread extends ReplayThread {
         if (endTime < currentEndTime) {
             CURRENT_SQL_END_TIME.set(endTime);
         }
+        if (replaySqlOperator.getReplayConfig().isSourceTimeInterval()) {
+            sourceTimeInterval(sqlModel);
+        }
         ExecuteResponse response = new ExecuteResponse();
         response = sqlModel.isPrepared() ? replaySqlOperator.executePrepareSql(replayConn, sqlModel)
                 : replaySqlOperator.executeStmtSql(replayConn, sqlModel);
@@ -162,6 +167,23 @@ public class SingleReplayThread extends ReplayThread {
                     .orElse(Long.MAX_VALUE));
         }
         return response;
+    }
+
+    private void sourceTimeInterval(SqlModel sqlModel) {
+        if (preStartTime > 0) {
+            long separation = (sqlModel.getStartTime() - preStartTime) / 1000;
+            long diffTime = System.currentTimeMillis() - replyTime;
+            if (separation > diffTime) {
+                try {
+                    sleep(separation - diffTime);
+                } catch (InterruptedException e) {
+                    LOGGER.error("InterruptedException occurred while reply sql, error message is: {}.",
+                            e.getMessage());
+                }
+            }
+        }
+        replyTime = System.currentTimeMillis();
+        preStartTime = sqlModel.getStartTime();
     }
 
     private synchronized void closeThread(Set<String> sessions) {
@@ -188,8 +210,11 @@ public class SingleReplayThread extends ReplayThread {
         collectDuration(thread);
         LOGGER.info("thread will be stop, name: {}", thread.getName());
         close();
+        singleThreadModel.removeThread(getName());
+        singleThreadModel.removeSession(sessionSet);
         singleThreadModel.decrementThreadCount();
-        if (singleThreadModel.getThreadCount() == 0) {
+        if (processModel.isReadFinish() && processModel.getReplayCount() == processModel.getSqlCount()
+                && singleThreadModel.getThreadCount() == 0) {
             processModel.setReplayFinish();
         }
     }

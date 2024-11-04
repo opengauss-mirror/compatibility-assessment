@@ -172,6 +172,21 @@ public final class FileOperator {
     }
 
     /**
+     * send finished flag
+     */
+    public void sendFinishedFlag() {
+        String endFilePath = config.getFilePath() + File.separator + "endFile";
+        File endFile = new File(endFilePath);
+        try {
+            if (!endFile.exists()) {
+                endFile.createNewFile();
+            }
+        } catch (IOException e) {
+            LOGGER.error("failed to write end flag.");
+        }
+    }
+
+    /**
      * Create path
      *
      * @param path String the file path
