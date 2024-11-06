@@ -141,6 +141,11 @@ public final class ConfigReader {
     public static final String SQL_FILE_PATH = "sql.file.path";
 
     /**
+     * tcpdump source database server type
+     */
+    public static final String TCPDUMP_DATABASE_TYPE = "tcpdump.database.type";
+
+    /**
      * tcpdump database ip
      */
     public static final String TCPDUMP_DATABASE_IP = "tcpdump.database.ip";
@@ -620,6 +625,7 @@ public final class ConfigReader {
 
     private static void putParseConfig(Properties props) {
         CONFIG_MAP.put(TCPDUMP_FILE_PATH, matchFilePath(props.getProperty(TCPDUMP_FILE_PATH)));
+        CONFIG_MAP.put(TCPDUMP_DATABASE_TYPE, matchDbType(props.getProperty(TCPDUMP_DATABASE_TYPE)));
         CONFIG_MAP.put(TCPDUMP_DATABASE_IP, matchIp(props.getProperty(TCPDUMP_DATABASE_IP)));
         CONFIG_MAP.put(TCPDUMP_DATABASE_PORT, matchPort(props.getProperty(TCPDUMP_DATABASE_PORT)));
         CONFIG_MAP.put(QUEUE_SIZE_LIMIT, matchNumber(props.getProperty(QUEUE_SIZE_LIMIT, "10000")));
@@ -891,5 +897,9 @@ public final class ConfigReader {
             return false;
         }
         return Integer.parseInt(port) > 0 && Integer.parseInt(port) <= 65535;
+    }
+
+    private static Boolean matchDbType(String tcpdumpDatabaseType) {
+        return "mysql".equalsIgnoreCase(tcpdumpDatabaseType);
     }
 }

@@ -40,8 +40,9 @@ public class ParseConfig {
     private DatabaseConfig opengaussConfig;
     private String storageMode;
     private String packetFilePath;
-    private String mysqlServerIp;
-    private int mysqlServerPort;
+    private String databaseServerType;
+    private String databaseServerIp;
+    private int databaseServerPort;
     private int queueSizeLimit;
     private int packetBatchSize;
     private boolean isDropPreviousSql;
@@ -54,8 +55,9 @@ public class ParseConfig {
     public void load(Properties props) {
         this.storageMode = props.getProperty(ConfigReader.SQL_STORAGE_MODE, ConfigReader.JSON);
         this.packetFilePath = props.getProperty(ConfigReader.TCPDUMP_FILE_PATH);
-        this.mysqlServerIp = props.getProperty(ConfigReader.TCPDUMP_DATABASE_IP);
-        this.mysqlServerPort = Integer.parseInt(props.getProperty(ConfigReader.TCPDUMP_DATABASE_PORT));
+        this.databaseServerType = props.getProperty(ConfigReader.TCPDUMP_DATABASE_TYPE);
+        this.databaseServerIp = props.getProperty(ConfigReader.TCPDUMP_DATABASE_IP);
+        this.databaseServerPort = Integer.parseInt(props.getProperty(ConfigReader.TCPDUMP_DATABASE_PORT));
         this.queueSizeLimit = Integer.parseInt(props.getProperty(ConfigReader.QUEUE_SIZE_LIMIT, "10000"));
         this.packetBatchSize = Integer.parseInt(props.getProperty(ConfigReader.PACKET_BATCH_SIZE, "10000"));
         if (ConfigReader.JSON.equalsIgnoreCase(storageMode)) {

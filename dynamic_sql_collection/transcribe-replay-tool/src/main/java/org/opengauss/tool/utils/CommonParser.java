@@ -89,4 +89,30 @@ public final class CommonParser {
         int low = Integer.parseInt(CommonParser.parseByLittleEndian(packet, 4, 8), 16);
         return (long) high * 1000 * 1000 + low;
     }
+
+    /**
+     * Parse int by big endian
+     *
+     * @param packet byte[] the packet
+     * @param start int the start index
+     * @param end int the end index
+     *
+     * @return int the parse result
+     */
+    public static int parseIntByBigEndian(byte[] packet, int start, int end) {
+        return Integer.parseInt(parseByBigEndian(packet, start, end), 16);
+    }
+
+    /**
+     * Parse int by big endian
+     *
+     * @param packet byte[] the packet
+     * @param start int the start index
+     * @param end int the end index
+     *
+     * @return int the parse result
+     */
+    public static int parseIntByLittleEndian(byte[] packet, int start, int end) {
+        return Integer.parseInt(parseByLittleEndian(packet, start, end), 16);
+    }
 }

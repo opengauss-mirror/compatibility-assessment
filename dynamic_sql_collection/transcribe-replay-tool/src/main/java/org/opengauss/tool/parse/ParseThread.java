@@ -45,13 +45,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ParseThread extends Thread {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParseThread.class);
 
-    private BlockingQueue<PacketData> mysqlPacketQueue;
-    private BlockingQueue<SqlInfo> sqlQueue;
+    /**
+     * packet queue
+     */
+    protected BlockingQueue<PacketData> packetQueue;
+
+    /**
+     * sql queue
+     */
+    protected BlockingQueue<SqlInfo> sqlQueue;
+
+    /**
+     * source database username
+     */
+    protected String username;
+
+    /**
+     * source database schema
+     */
+    protected String schema;
     private SqlInfo incompleteSql;
     private Map<Integer, SqlInfo> preparedSqlMap;
     private String sessionId;
-    private String username;
-    private String schema;
     private AtomicBoolean isDistributeFinished;
     private AtomicBoolean isParseFinished;
     private List<Integer> preparedCloseStatements;
@@ -62,7 +77,7 @@ public class ParseThread extends Thread {
      * @param sessionId String the session id
      */
     public ParseThread(String sessionId) {
-        this.mysqlPacketQueue = new LinkedBlockingQueue<>();
+        this.packetQueue = new LinkedBlockingQueue<>();
         this.sqlQueue = new LinkedBlockingQueue<>();
         this.sessionId = sessionId;
         this.preparedSqlMap = new HashMap<>();
@@ -78,14 +93,13 @@ public class ParseThread extends Thread {
      * @param packetData PacketData the packet data
      */
     public void addDataToQueue(PacketData packetData) {
-        this.mysqlPacketQueue.offer(packetData);
+        this.packetQueue.offer(packetData);
     }
 
     @Override
     public void run() {
         List<PacketData> packetDataList = new ArrayList<>();
         PacketData mergedPacket;
-        String requestType;
         while (true) {
             PacketData currentPacket = pollNextPacket();
             if (currentPacket == null) {
@@ -101,12 +115,8 @@ public class ParseThread extends Thread {
             } else {
                 addSqLToQueue();
             }
-            if (currentPacket.getData().length == 5) {
-                requestType = parsePacketType(currentPacket);
-                if (ProtocolConstant.COM_QUIT.equals(requestType)) {
-                    quit(currentPacket);
-                    break;
-                }
+            if (isQuitMessage(currentPacket)) {
+                break;
             }
             packetDataList.add(currentPacket);
             PacketData next;
@@ -127,7 +137,7 @@ public class ParseThread extends Thread {
                 }
             }
             mergedPacket = mergePacket(packetDataList);
-            parseMysqlPacket(mergedPacket);
+            parsePacket(mergedPacket);
             packetDataList.clear();
         }
         if (incompleteSql != null && incompleteSql.getEndTime() != 0) {
@@ -139,6 +149,23 @@ public class ParseThread extends Thread {
         interrupt();
     }
 
+    /**
+     * Is quit message
+     *
+     * @param packet PacketData the packet data
+     * @return true if current massage is quit message
+     */
+    protected boolean isQuitMessage(PacketData packet) {
+        if (packet.getData().length == 5) {
+            String requestType = parsePacketType(packet);
+            if (ProtocolConstant.COM_QUIT.equals(requestType)) {
+                quit(packet);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private PacketData mergePacket(List<PacketData> packetDataList) {
         if (packetDataList.isEmpty()) {
             return new PacketData();
@@ -147,7 +174,7 @@ public class ParseThread extends Thread {
         if (packetDataList.size() == 1) {
             return res;
         }
-        res.setMicrosecondTimestamp(packetDataList.get(0).getMicrosecondTimestamp());
+        res.setMicrosecondTimestamp(packetDataList.get(packetDataList.size() - 1).getMicrosecondTimestamp());
         int totalLength = 0;
         for (PacketData packetData : packetDataList) {
             totalLength += packetData.getData().length;
@@ -165,55 +192,64 @@ public class ParseThread extends Thread {
     }
 
     private PacketData pollNextPacket() {
-        PacketData next;
-        while (true) {
-            next = mysqlPacketQueue.poll();
-            if (next == null) {
-                if (isDistributeFinished.get() && mysqlPacketQueue.isEmpty()) {
-                    break;
-                }
-                continue;
+        do {
+            PacketData next = packetQueue.poll();
+            if (next != null) {
+                return next;
             }
-            return next;
-        }
+        } while (shouldWaitPacket());
         return null;
     }
 
     private PacketData peekNextPacket() {
-        while (true) {
-            PacketData next = mysqlPacketQueue.peek();
-            if (next == null) {
-                if (isDistributeFinished.get() && mysqlPacketQueue.isEmpty()) {
-                    break;
-                }
-                continue;
+        do {
+            PacketData next = packetQueue.peek();
+            if (next != null) {
+                return next;
             }
-            return next;
-        }
+        } while (shouldWaitPacket());
         return null;
     }
 
-    private void parseMysqlPacket(PacketData mysqlPacket) {
-        if (mysqlPacket.getData() == null) {
-            return;
+    private boolean shouldWaitPacket() {
+        if (isDistributeFinished.get() && packetQueue.isEmpty()) {
+            return false;
         }
-        String requestType = parsePacketType(mysqlPacket);
-        parseRequestPacket(requestType, mysqlPacket);
+        try {
+            sleep(10);
+        } catch (InterruptedException e) {
+            LOGGER.error("Sleep interrupted.", e);
+        }
+        return true;
     }
 
-    private void parseRequestPacket(String requestType, PacketData mysqlPacket) {
-        int payloadLen = Integer.parseInt(CommonParser.parseByLittleEndian(mysqlPacket.getData(), 0, 3), 16);
-        if (mysqlPacket.getData().length < payloadLen + 4) {
+    private void parsePacket(PacketData packet) {
+        if (packet.getData() == null) {
+            return;
+        }
+        String requestType = parsePacketType(packet);
+        parseRequestPacket(requestType, packet);
+    }
+
+    /**
+     * Parse request packet
+     *
+     * @param requestType String the request packet type
+     * @param packet PacketData packet
+     */
+    protected void parseRequestPacket(String requestType, PacketData packet) {
+        int payloadLen = CommonParser.parseIntByLittleEndian(packet.getData(), 0, 3);
+        if (packet.getData().length < payloadLen + 4) {
             LOGGER.info("Some Packet from {} are lost, ignore them.", sessionId);
             skipResponsePacket();
             return;
         }
-        if (mysqlPacket.getData().length > payloadLen + 4) {
-            mysqlPacket.modifyData(payloadLen + 4);
+        if (packet.getData().length > payloadLen + 4) {
+            packet.modifyData(payloadLen + 4);
         }
-        int sequenceId = Integer.parseInt(CommonParser.parseByLittleEndian(mysqlPacket.getData(), 3, 4), 16);
+        int sequenceId = CommonParser.parseIntByLittleEndian(packet.getData(), 3, 4);
         if (!ProtocolConstant.REQUEST_TYPE_LIST.contains(requestType)) {
-            initLoginRequest(mysqlPacket);
+            initLoginRequest(packet);
             return;
         }
         if (schema == null && !ProtocolConstant.COM_QUIT.equals(requestType)) {
@@ -222,39 +258,43 @@ public class ParseThread extends Thread {
         }
         switch (requestType) {
             case ProtocolConstant.COM_QUERY:
-                parseSql(mysqlPacket);
+                parseSql(packet);
                 return;
             case ProtocolConstant.COM_STMT_PREPARE:
-                parsePreparedSql(mysqlPacket);
+                parsePreparedSql(packet);
                 return;
             case ProtocolConstant.COM_STMT_EXECUTE:
-                parsePreparedParameter(mysqlPacket);
+                parsePreparedParameter(packet);
                 return;
             case ProtocolConstant.COM_STMT_CLOSE:
-                closeStatement(mysqlPacket);
+                closeStatement(packet);
                 return;
             case ProtocolConstant.COM_STMT_RESET:
-                resetStatement(mysqlPacket);
+                resetStatement(packet);
                 return;
             default:
                 skipResponsePacket();
         }
     }
 
-    private void initLoginRequest(PacketData mysqlPacket) {
+    /**
+     * Initialize login information
+     *
+     * @param packet PacketData the packet
+     */
+    protected void initLoginRequest(PacketData packet) {
         // login request massage，skip 36 bytes, follow is username, end with "00"
-        byte[] packet = mysqlPacket.getData();
+        byte[] data = packet.getData();
         int start = 36;
-        int end = getStringEndIndex(packet, start);
+        int end = getStringEndIndex(data, start);
         if (end == -1) {
             return;
         }
-        username = CommonParser.parseByteToString(packet, start, end);
-        int passwordLen = Integer.parseInt(CommonParser
-                .parseByLittleEndian(packet, end + 1, end + 2), 16);
+        username = CommonParser.parseByteToString(data, start, end);
+        int passwordLen = CommonParser.parseIntByLittleEndian(data, end + 1, end + 2);
         start = end + 2 + passwordLen;
-        end = getStringEndIndex(packet, start);
-        schema = CommonParser.parseByteToString(packet, start, end);
+        end = getStringEndIndex(data, start);
+        schema = CommonParser.parseByteToString(data, start, end);
         PacketData responseData = pollNextPacket();
         if (responseData == null) {
             return;
@@ -264,12 +304,17 @@ public class ParseThread extends Thread {
         skipResponsePacket();
     }
 
-    private void parseSql(PacketData mysqlPacket) {
-        byte[] packet = mysqlPacket.getData();
-        String sql = CommonParser.parseByteToString(packet, 5, packet.length).trim();
-        SqlInfo sqlObject = new SqlInfo(mysqlPacket.getPacketId(), false, sql);
+    /**
+     * Parse sql
+     *
+     * @param packet PacketData the packet
+     */
+    protected void parseSql(PacketData packet) {
+        byte[] data = packet.getData();
+        String sql = CommonParser.parseByteToString(data, 5, data.length).trim();
+        SqlInfo sqlObject = new SqlInfo(packet.getPacketId(), false, sql);
         sqlObject.encapsulateSql(username, schema, sessionId, 0);
-        sqlObject.setStartTime(mysqlPacket.getMicrosecondTimestamp());
+        sqlObject.setStartTime(packet.getMicrosecondTimestamp());
         incompleteSql = sqlObject;
     }
 
@@ -286,27 +331,27 @@ public class ParseThread extends Thread {
         }
     }
 
-    private void parsePreparedSql(PacketData mysqlPacket) {
-        byte[] packet = mysqlPacket.getData();
-        String sql = CommonParser.parseByteToString(packet, 5, packet.length).trim();
-        SqlInfo sqlObject = new SqlInfo(mysqlPacket.getPacketId(), true, sql);
+    private void parsePreparedSql(PacketData packet) {
+        byte[] data = packet.getData();
+        String sql = CommonParser.parseByteToString(data, 5, data.length).trim();
+        SqlInfo sqlObject = new SqlInfo(packet.getPacketId(), true, sql);
         PacketData next = pollNextPacket();
         if (next == null) {
             return;
         }
         String res = parsePacketType(next);
         if (ProtocolConstant.OK_RESPONSE.equals(res)) {
-            int statementId = Integer.parseInt(CommonParser.parseByLittleEndian(next.getData(), 5, 9), 16);
-            int paraNum = Integer.parseInt(CommonParser.parseByLittleEndian(next.getData(), 11, 13), 16);
+            int statementId = CommonParser.parseIntByLittleEndian(next.getData(), 5, 9);
+            int paraNum = CommonParser.parseIntByLittleEndian(next.getData(), 11, 13);
             sqlObject.encapsulateSql(username, schema, sessionId, paraNum);
             preparedSqlMap.put(statementId, sqlObject);
         }
         skipResponsePacket();
     }
 
-    private void parsePreparedParameter(PacketData mysqlPacket) {
-        byte[] packet = mysqlPacket.getData();
-        int statementId = Integer.parseInt(CommonParser.parseByLittleEndian(packet, 5, 9), 16);
+    private void parsePreparedParameter(PacketData packet) {
+        byte[] data = packet.getData();
+        int statementId = CommonParser.parseIntByLittleEndian(data, 5, 9);
         if (!preparedSqlMap.containsKey(statementId)) {
             skipResponsePacket();
             return;
@@ -317,8 +362,7 @@ public class ParseThread extends Thread {
         if (pbeSql.getParaNum() > 0) {
             // NULL bitmap length
             start += (pbeSql.getParaNum() + 7) / 8;
-            isNewParas = (Integer.parseInt(CommonParser.parseByLittleEndian(packet, start,
-                    start + 1), 16) == 1);
+            isNewParas = (CommonParser.parseIntByLittleEndian(data, start, start + 1) == 1);
         }
         List<PreparedValue> parameterList = pbeSql.getParameterList();
         parameterList.clear();
@@ -326,7 +370,7 @@ public class ParseThread extends Thread {
             pbeSql.getTypeList().clear();
             for (int i = start + 1; i < start + pbeSql.getParaNum() * 2 + 1; i += 2) {
                 // parameter type
-                pbeSql.getTypeList().add(CommonParser.parseByLittleEndian(packet, i, i + 1));
+                pbeSql.getTypeList().add(CommonParser.parseByLittleEndian(data, i, i + 1));
             }
             start += 1 + pbeSql.getParaNum() * 2;
         } else {
@@ -334,10 +378,10 @@ public class ParseThread extends Thread {
         }
         int index = 0;
         while (index < pbeSql.getParaNum()) {
-            PreparedValue preparedValue = DataTypeConverter.getValue(pbeSql.getTypeList().get(index), packet, start);
+            PreparedValue preparedValue = DataTypeConverter.getValue(pbeSql.getTypeList().get(index), data, start);
             if (preparedValue.getValue() == null && preparedValue.getType() == null) {
                 LOGGER.error("An error occurred in parsing the {}th message of the file {}, skip it.",
-                        mysqlPacket.getIdInFile(), mysqlPacket.getLocationFile());
+                        packet.getIdInFile(), packet.getLocationFile());
                 skipResponsePacket();
                 return;
             }
@@ -347,42 +391,45 @@ public class ParseThread extends Thread {
         }
         SqlInfo sql = pbeSql.clone();
         sql.setSessionId(sessionId);
-        sql.setSqlId(mysqlPacket.getPacketId());
-        sql.setStartTime(mysqlPacket.getMicrosecondTimestamp());
+        sql.setSqlId(packet.getPacketId());
+        sql.setStartTime(packet.getMicrosecondTimestamp());
         incompleteSql = sql;
         pbeSql.getParameterList().clear();
     }
 
-    private void resetStatement(PacketData mysqlPacket) {
-        int statementId = Integer.parseInt(CommonParser.parseByLittleEndian(mysqlPacket.getData(), 5, 9), 16);
+    private void resetStatement(PacketData packet) {
+        int statementId = CommonParser.parseIntByLittleEndian(packet.getData(), 5, 9);
         if (preparedSqlMap.containsKey(statementId)) {
             preparedSqlMap.get(statementId).getParameterList().clear();
         }
         skipResponsePacket();
     }
 
-    private void closeStatement(PacketData mysqlPacket) {
-        int statementId = Integer.parseInt(CommonParser.parseByLittleEndian(mysqlPacket.getData(), 5, 9), 16);
+    private void closeStatement(PacketData packet) {
+        int statementId = Integer.parseInt(CommonParser.parseByLittleEndian(packet.getData(), 5, 9), 16);
         preparedCloseStatements.add(statementId);
-        int len = mysqlPacket.getData().length;
+        int len = packet.getData().length;
         // COM_STMT_CLOSE message length
         if (len > 10) {
-            mysqlPacket.clonePacketData(mysqlPacket.getData(), 9);
-            parseMysqlPacket(mysqlPacket);
+            packet.clonePacketData(packet.getData(), 9);
+            parsePacket(packet);
         }
         skipResponsePacket();
     }
 
-    private void quit(PacketData mysqlPacket) {
+    private void quit(PacketData packet) {
         if (schema == null) {
             return;
         }
-        SqlInfo sql = new SqlInfo(mysqlPacket.getPacketId(), false, "quit");
+        SqlInfo sql = new SqlInfo(packet.getPacketId(), false, "quit");
         sql.encapsulateSql(username, schema, sessionId, 0);
         sqlQueue.offer(sql);
     }
 
-    private void skipResponsePacket() {
+    /**
+     * Skip response packet
+     */
+    protected void skipResponsePacket() {
         PacketData next;
         while (true) {
             next = peekNextPacket();
@@ -393,7 +440,15 @@ public class ParseThread extends Thread {
         }
     }
 
-    private int getStringEndIndex(byte[] flame, int start) {
+    /**
+     * Get string end index
+     *
+     * @param flame byte[] the flame
+     * @param start int the start
+     *
+     * @return int the string end index
+     */
+    protected int getStringEndIndex(byte[] flame, int start) {
         for (int i = start; i < flame.length; i++) {
             if (flame[i] == 0) {
                 return i;
@@ -402,8 +457,8 @@ public class ParseThread extends Thread {
         return -1;
     }
 
-    private String parsePacketType(PacketData mysqlPacket) {
-        return CommonParser.parseByLittleEndian(mysqlPacket.getData(), 4, 5);
+    private String parsePacketType(PacketData packet) {
+        return CommonParser.parseByLittleEndian(packet.getData(), 4, 5);
     }
 
     /**
