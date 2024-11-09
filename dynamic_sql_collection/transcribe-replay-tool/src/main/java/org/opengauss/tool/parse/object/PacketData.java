@@ -89,6 +89,10 @@ public class PacketData {
         this.data = Arrays.copyOfRange(packet, start, packet.length);
     }
 
+    public void clonePacketData(byte[] data, int start, int length) {
+        this.data = Arrays.copyOfRange(data, start, start + length);
+    }
+
     /**
      * Set microsecond timestamp
      *
@@ -138,5 +142,23 @@ public class PacketData {
         byte[] newData = new byte[length];
         System.arraycopy(data, 0, newData, 0, length);
         this.data = newData;
+    }
+
+    /**
+     * Copy attribute from other object
+     *
+     * @param packet Other PacketData object
+     */
+    public void copyFrom(PacketData packet) {
+        this.locationFile = packet.locationFile;
+        this.idInFile = packet.idInFile;
+        this.packetId = packet.packetId;
+        this.packetType = packet.packetType;
+        this.sourceIp = packet.sourceIp;
+        this.sourcePort = packet.sourcePort;
+        this.destinationIp = packet.destinationIp;
+        this.destinationPort = packet.destinationPort;
+        this.clientId = packet.clientId;
+        this.microsecondTimestamp.set(packet.microsecondTimestamp.get());
     }
 }

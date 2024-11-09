@@ -65,12 +65,6 @@ public class SqlAgent {
         loadedClasses = inst.getAllLoadedClasses();
         inst.addTransformer(STATEFORMER, true);
         inst.addTransformer(PREPAREDFORMER, true);
-        for (Class clazz : loadedClasses) {
-            Boolean isCont = names.contains(clazz.getName());
-            if (isCont) {
-                inst.retransformClasses(clazz);
-            }
-        }
         List<String> params = Arrays.asList(agentArgs.split(" "));
         boolean isNeverStop = false;
         long executionTime = 0L;
@@ -107,6 +101,11 @@ public class SqlAgent {
         }
         if (isNeverStop) {
             return;
+        }
+        for (Class clazz : loadedClasses) {
+            if (names.contains(clazz.getName())) {
+                inst.retransformClasses(clazz);
+            }
         }
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         scheduleRemoveTransformers(inst, executionTime, unit, executor);

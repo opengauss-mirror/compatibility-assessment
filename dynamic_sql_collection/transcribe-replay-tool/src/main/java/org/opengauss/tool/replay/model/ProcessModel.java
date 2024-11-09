@@ -61,8 +61,8 @@ public class ProcessModel {
         this.isAssignFinish = new AtomicBoolean(false);
         this.isReadFinish = new AtomicBoolean(false);
         this.slowSqlQueue = new PriorityQueue<>(Comparator.comparingLong(SqlModel::getOpgsDuration));
-        this.mysqlSeries = new XYSeries("MySQL");
-        this.opgsSeries = new XYSeries("openGauss");
+        this.mysqlSeries = new XYSeries("SourceDB");
+        this.opgsSeries = new XYSeries("SinkDB");
     }
 
     /**

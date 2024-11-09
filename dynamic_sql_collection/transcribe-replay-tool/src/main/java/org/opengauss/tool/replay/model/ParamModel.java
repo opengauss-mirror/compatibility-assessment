@@ -52,6 +52,10 @@ public class ParamModel {
      * @param index index
      */
     public ParamModel(String paramStr, int index) {
+        if ("{}".equals(paramStr)) {
+            this.id = index + 1;
+            this.type = "null";
+        }
         int splitIndex = paramStr.indexOf(":");
         if (splitIndex != -1) {
             this.id = index + 1;

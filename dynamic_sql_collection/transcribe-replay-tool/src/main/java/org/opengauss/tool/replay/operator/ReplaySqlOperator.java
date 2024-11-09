@@ -31,6 +31,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,16 +71,15 @@ public class ReplaySqlOperator {
         ExecuteResponse response = new ExecuteResponse();
         PreparedStatement preSqlStmt = null;
         try {
-            preSqlStmt = replayConn.prepareStatement(sqlModel.getSql());
-            for (ParamModel paramModel : sqlModel.getParameters()) {
-                ParameterTypeEnum type = ParameterTypeEnum.fromTypeName(paramModel.getType());
-                type.setParam(preSqlStmt, paramModel.getId(), paramModel.getValue());
-            }
-            if (!isDmlSql(sqlModel.getSql())) {
-                preSqlStmt.execute();
+            String sql = sqlModel.getSql();
+            if (isDmlSql(sql)) {
+                preSqlStmt = replayConn.prepareStatement("EXPLAIN ANALYZE " + sql);
+                response = executePreparedDml(sqlModel, preSqlStmt);
             } else {
-                response = execute(replayConn, sqlModel, preSqlStmt.toString());
+                preSqlStmt = replayConn.prepareStatement(sql);
+                executeDdl(sqlModel, preSqlStmt);
             }
+            DatabaseOperator.closeStatement(preSqlStmt);
         } catch (SQLException e) {
             if (replayConfig.getTargetDbConfig().isCluster() && e.getMessage().contains("connection")) {
                 // 主备倒换 重建数据库连接 重新执行当前语句
@@ -95,12 +95,97 @@ public class ReplaySqlOperator {
         return response;
     }
 
+    private void executeDdl(SqlModel sqlModel, PreparedStatement preSqlStmt) throws SQLException {
+        int paraCount = preSqlStmt.getParameterMetaData().getParameterCount();
+        List<ParamModel> paraList = sqlModel.getParameters();
+        if (paraCount == paraList.size()) {
+            bindParameters(preSqlStmt, paraList);
+            preSqlStmt.execute();
+        } else {
+            bindBatchParameters(paraCount, preSqlStmt, paraList);
+            preSqlStmt.executeBatch();
+            preSqlStmt.clearBatch();
+        }
+    }
+
+    private ExecuteResponse executePreparedDml(SqlModel sqlModel, PreparedStatement preSqlStmt) throws SQLException {
+        int paraCount = preSqlStmt.getParameterMetaData().getParameterCount();
+        List<ParamModel> paraList = sqlModel.getParameters();
+        if (paraCount == paraList.size()) {
+            bindParameters(preSqlStmt, paraList);
+            return execute(sqlModel, preSqlStmt);
+        } else {
+            return bindBatchAndExecute(paraCount, sqlModel, preSqlStmt);
+        }
+    }
+
+    private void bindBatchParameters(int paraCount, PreparedStatement preSqlStmt, List<ParamModel> paraList)
+        throws SQLException {
+        for (int i = 0; i < paraList.size(); i++) {
+            ParamModel parameter = paraList.get(i);
+            ParameterTypeEnum type = ParameterTypeEnum.fromTypeName(parameter.getType());
+            type.setParam(preSqlStmt, parameter.getId() % paraCount == 0 ? paraCount : parameter.getId() % paraCount,
+                parameter.getValue());
+            if ((i + 1) % paraCount == 0) {
+                preSqlStmt.addBatch();
+            }
+        }
+    }
+
+    private void bindParameters(PreparedStatement preSqlStmt, List<ParamModel> paraList) throws SQLException {
+        for (int i = 0; i < paraList.size(); i++) {
+            ParamModel parameter = paraList.get(i);
+            ParameterTypeEnum type = ParameterTypeEnum.fromTypeName(parameter.getType());
+            type.setParam(preSqlStmt, parameter.getId(), parameter.getValue());
+        }
+    }
+
+    private ExecuteResponse bindBatchAndExecute(int paraCount, SqlModel sqlModel, PreparedStatement preSqlStmt)
+        throws SQLException {
+        ExecuteResponse response = new ExecuteResponse();
+        List<ParamModel> paramModels = sqlModel.getParameters();
+        for (int i = 0; i < paramModels.size(); i++) {
+            ParamModel parameter = paramModels.get(i);
+            ParameterTypeEnum type = ParameterTypeEnum.fromTypeName(parameter.getType());
+            type.setParam(preSqlStmt, parameter.getId() % paraCount == 0 ? paraCount : parameter.getId() % paraCount,
+                parameter.getValue());
+            if ((i + 1) % paraCount == 0) {
+                executeAndRefresh(preSqlStmt, response);
+            }
+        }
+        if (isSlowSql(response.getOpgsDuration(), sqlModel.getMysqlDuration())) {
+            slowSqlOperator.recordSlowSql(sqlModel, response.getOpgsDuration(), response.getSlowSqlExplain());
+            response.setSlowSql(true);
+            response.setSlowSqlExplain(response.getSlowSqlExplain());
+        }
+        return response;
+    }
+
     private ExecuteResponse execute(Connection replayConn, SqlModel sqlModel, String sql) throws SQLException {
-        String explainStr = getExplainSb(replayConn, sql);
+        String explainStr = executeAndGetExplain(replayConn, sql);
         int lastColonsIndex = explainStr.lastIndexOf(":");
         int msIndex = explainStr.lastIndexOf("ms");
         long duration = (long) (Double.parseDouble(explainStr.substring(lastColonsIndex + 1, msIndex).trim()) * 1000);
         return getExecuteResponse(sqlModel, duration, explainStr);
+    }
+
+    private ExecuteResponse execute(SqlModel sqlModel, PreparedStatement preSqlStmt) throws SQLException {
+        String explainStr = executeAndGetExplain(preSqlStmt);
+        long duration = getExecuteDuration(explainStr);
+        return getExecuteResponse(sqlModel, duration, explainStr);
+    }
+
+    private void executeAndRefresh(PreparedStatement preSqlStmt, ExecuteResponse response)
+        throws SQLException {
+        String explainStr = executeAndGetExplain(preSqlStmt);
+        long duration = getExecuteDuration(explainStr);
+        response.refresh(duration, explainStr);
+    }
+
+    private long getExecuteDuration(String explainStr) {
+        int lastColonsIndex = explainStr.lastIndexOf(":");
+        int msIndex = explainStr.lastIndexOf("ms");
+        return (long) (Double.parseDouble(explainStr.substring(lastColonsIndex + 1, msIndex).trim()) * 1000);
     }
 
     private ExecuteResponse getExecuteResponse(SqlModel sqlModel, long duration, String explain) {
@@ -174,7 +259,7 @@ public class ReplaySqlOperator {
             : opgsDuration > replayConfig.getSlowThreshold();
     }
 
-    private String getExplainSb(Connection replayConn, String sql) throws SQLException {
+    private String executeAndGetExplain(Connection replayConn, String sql) throws SQLException {
         String explainSql = "EXPLAIN ANALYZE " + sql;
         Statement st = null;
         ResultSet explainRs = null;
@@ -191,6 +276,23 @@ public class ReplaySqlOperator {
         } finally {
             DatabaseOperator.closeResultSet(explainRs);
             DatabaseOperator.closeStatement(st);
+        }
+        return explainSb.toString();
+    }
+
+    private String executeAndGetExplain(PreparedStatement preparedStatement) throws SQLException {
+        ResultSet explainRs = null;
+        StringBuffer explainSb = new StringBuffer();
+        try {
+            explainRs = preparedStatement.executeQuery();
+            while (explainRs.next()) {
+                for (int i = 1; i <= explainRs.getMetaData().getColumnCount(); i++) {
+                    explainSb.append(explainRs.getString(i));
+                    explainSb.append(System.lineSeparator()).append("        ");
+                }
+            }
+        } finally {
+            DatabaseOperator.closeResultSet(explainRs);
         }
         return explainSb.toString();
     }

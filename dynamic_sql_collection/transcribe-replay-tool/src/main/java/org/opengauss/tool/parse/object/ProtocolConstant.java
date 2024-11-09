@@ -115,6 +115,26 @@ public final class ProtocolConstant {
      */
     public static final int IPV6_HEADER_LENGTH = 40;
 
+    /**
+     * Record the number of bytes in the message length of openGauss protocol
+     */
+    public static final int OG_DATA_LENGTH_BYTES = 4;
+
+    /**
+     * Record the number of bytes in the message type and message length of openGauss protocol
+     */
+    public static final int OG_DATA_TYPE_AND_LENGTH_BYTES = 5;
+
+    /**
+     * Login message start byte index of openGauss protocol
+     */
+    public static final int OG_LOGIN_MESSAGE_START_INDEX = 8;
+
+    /**
+     * Quit message hex string of openGauss protocol of openGauss protocol
+     */
+    public static final String OG_HEX_QUIT = "58";
+
     static {
         REQUEST_TYPE_LIST = new ArrayList<>();
         char[] hexChars = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd'};

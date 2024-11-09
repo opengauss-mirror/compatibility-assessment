@@ -22,6 +22,8 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Description: Sql object
@@ -31,6 +33,8 @@ import java.util.Locale;
  */
 @Data
 public class SqlInfo {
+    private static final Pattern PATTERN = Pattern.compile("\\$\\d+");
+
     private long sqlId;
     private boolean isPbe;
     private String sql;
@@ -50,9 +54,24 @@ public class SqlInfo {
      * Constructor
      */
     public SqlInfo() {
-        this.parameterList = new ArrayList<>();
-        this.typeList = new ArrayList<>();
-        this.json = new JSONObject(true);
+        init();
+    }
+
+    /**
+     * Constructor
+     *
+     * @param paraNum int the parameter number
+     * @param sql String the sql
+     */
+    public SqlInfo(int paraNum, String sql) {
+        init();
+        this.paraNum = paraNum;
+        this.sql = sql;
+        if (paraNum > 0) {
+            buildStandardizedPrepareSql();
+            this.isPbe = true;
+        }
+        setQuery();
     }
 
     /**
@@ -63,13 +82,17 @@ public class SqlInfo {
      * @param sql   String the sql
      */
     public SqlInfo(long sqlId, boolean isPbe, String sql) {
-        this.parameterList = new ArrayList<>();
-        this.typeList = new ArrayList<>();
-        this.json = new JSONObject(true);
+        init();
         this.sqlId = sqlId;
         this.isPbe = isPbe;
         this.sql = sql;
         setQuery();
+    }
+
+    private void init() {
+        this.parameterList = new ArrayList<>();
+        this.typeList = new ArrayList<>();
+        this.json = new JSONObject(true);
     }
 
     /**
@@ -81,15 +104,29 @@ public class SqlInfo {
      * @param paraNum    parameter number
      */
     public void encapsulateSql(String username, String schema, String sendSource, int paraNum) {
+        encapsulateSql(username, schema, sendSource);
+        this.paraNum = paraNum;
+    }
+
+    public void encapsulateSql(String username, String schema, String sendSource) {
         this.username = username;
         this.schema = schema;
         this.sessionId = sendSource;
-        this.paraNum = paraNum;
     }
 
     @Override
     public SqlInfo clone() {
         SqlInfo copy = new SqlInfo();
+        copyToOther(copy);
+        return copy;
+    }
+
+    /**
+     * Copy attribute to other object
+     *
+     * @param copy other SqlInfo object
+     */
+    public void copyToOther(SqlInfo copy) {
         copy.sqlId = this.sqlId;
         copy.isQuery = this.isQuery;
         copy.isPbe = this.isPbe;
@@ -102,11 +139,17 @@ public class SqlInfo {
         copy.startTime = startTime;
         copy.endTime = endTime;
         copy.executeDuration = this.executeDuration;
-        return copy;
+        copy.typeList.addAll(this.typeList);
     }
 
-    private void setQuery() {
+    /**
+     * To determine if SQL is a query statement
+     */
+    public void setQuery() {
         String upperSql = sql.toUpperCase(Locale.ROOT);
+        if (upperSql.startsWith("/*")) {
+            upperSql = upperSql.substring(upperSql.indexOf("*/") + 2);
+        }
         this.isQuery = upperSql.startsWith("SELECT") || upperSql.startsWith("SHOW");
     }
 
@@ -122,11 +165,31 @@ public class SqlInfo {
         this.executeDuration = endTime - startTime;
     }
 
+    /**
+     * Set duration
+     *
+     * @param endTime long the end time
+     */
     public void setExecuteDuration(long endTime) {
         if (this.endTime == 0) {
             this.endTime = endTime;
             this.executeDuration = endTime - startTime;
         }
+    }
+
+    private void buildStandardizedPrepareSql() {
+        if (sql == null || sql.isEmpty()) {
+            return;
+        }
+        Matcher matcher = PATTERN.matcher(sql);
+        StringBuilder result = new StringBuilder();
+        int lastEnd = 0;
+        while (matcher.find()) {
+            result.append(sql, lastEnd, matcher.start()).append('?');
+            lastEnd = matcher.end();
+        }
+        result.append(sql.substring(lastEnd));
+        sql = result.toString();
     }
 
     /**

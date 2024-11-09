@@ -28,4 +28,17 @@ public class ExecuteResponse {
     private long opgsDuration = 0L;
     private boolean isSlowSql;
     private String slowSqlExplain;
+
+    /**
+     * Refresh current object's attribute
+     *
+     * @param duration long the execute duration
+     * @param explain String the execute plan
+     */
+    public void refresh(long duration, String explain) {
+        opgsDuration += duration;
+        if (slowSqlExplain == null) {
+            slowSqlExplain = explain;
+        }
+    }
 }

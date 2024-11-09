@@ -22,6 +22,7 @@ import org.opengauss.tool.config.transcribe.AttachConfig;
 import org.opengauss.tool.config.transcribe.GeneralLogConfig;
 import org.opengauss.tool.config.transcribe.TcpdumpConfig;
 import org.opengauss.tool.config.transcribe.TranscribeConfig;
+import org.opengauss.tool.parse.object.DatabaseTypeEnum;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -899,7 +900,7 @@ public final class ConfigReader {
         return Integer.parseInt(port) > 0 && Integer.parseInt(port) <= 65535;
     }
 
-    private static Boolean matchDbType(String tcpdumpDatabaseType) {
-        return "mysql".equalsIgnoreCase(tcpdumpDatabaseType);
+    private static Boolean matchDbType(String databaseType) {
+        return DatabaseTypeEnum.isInclude(databaseType);
     }
 }
