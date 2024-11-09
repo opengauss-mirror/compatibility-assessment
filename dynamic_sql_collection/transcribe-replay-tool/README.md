@@ -284,6 +284,8 @@ java -jar transcribe-replay-tool-7.0.0-RC1.jar -t parse -f parse.properties
 # parse
 # 待解析的网络数据包文件所在目录
 tcpdump.file.path=/***/***/***
+# tcpdump.database.type: tcpdump工具采集的源端数据库产品名称，目前仅支持mysql
+tcpdump.database.type=mysql
 # tcpdump.database.ip: tcpdump工具采集时监听的源端数据库的ip，String类型，无默认值
 tcpdump.database.ip=127.0.0.1
 # tcpdump.database.port: tcpdump工具采集时监听的源端数据库端口，int类型，无默认值

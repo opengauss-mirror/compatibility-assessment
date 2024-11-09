@@ -17,6 +17,7 @@ package org.opengauss.tool.parse;
 
 import org.opengauss.tool.config.parse.ParseConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
+import org.opengauss.tool.parse.object.DatabaseTypeEnum;
 import org.opengauss.tool.parse.object.OriginPacket;
 import org.opengauss.tool.parse.object.PacketData;
 import org.opengauss.tool.parse.object.ProtocolConstant;
@@ -71,6 +72,7 @@ public class ParseTask extends WorkTask {
     private final AtomicBoolean isParseFinished;
     private final AtomicBoolean isCommitSqlFinished;
     private final Set<SessionInfo> sessionInfoSet;
+    private final DatabaseTypeEnum databaseTypeEnum;
     private DatabaseOperator opengaussOperator;
     private FileOperator fileOperator;
     private LocalDateTime startTime;
@@ -91,6 +93,7 @@ public class ParseTask extends WorkTask {
         this.isParseFinished = new AtomicBoolean(false);
         this.isCommitSqlFinished = new AtomicBoolean(false);
         this.sessionInfoSet = new HashSet<>();
+        this.databaseTypeEnum = DatabaseTypeEnum.fromTypeName(config.getDatabaseServerType());
         initStorage();
     }
 
@@ -202,8 +205,7 @@ public class ParseTask extends WorkTask {
             packet = originPacket.getOriginData();
             packetId.incrementAndGet();
             if (ProtocolConstant.IPV4.equals(originPacket.getIpType())) {
-                headerLength = Integer.parseInt(CommonParser.parseByLittleEndian(packet, 46, 47),
-                        16) / 4;
+                headerLength = CommonParser.parseIntByLittleEndian(packet, 46, 47) / 4;
                 skipLength = ProtocolConstant.ETHERNET_HEADER_LENGTH + ProtocolConstant.IPV4_HEADER_LENGTH
                         + headerLength;
                 if (packet.length <= skipLength) {
@@ -211,10 +213,10 @@ public class ParseTask extends WorkTask {
                 }
                 sourceIp = parseIPV4Address(packet, 26, 30);
                 destinationIp = parseIPV4Address(packet, 30, 34);
-                sourcePort = Integer.parseInt(CommonParser.parseByBigEndian(packet, 34, 36), 16);
-                destinationPort = Integer.parseInt(CommonParser.parseByBigEndian(packet, 36, 38), 16);
+                sourcePort = CommonParser.parseIntByBigEndian(packet, 34, 36);
+                destinationPort = CommonParser.parseIntByBigEndian(packet, 36, 38);
             } else {
-                headerLength = Integer.parseInt(CommonParser.parseByLittleEndian(packet, 66, 67), 16) / 4;
+                headerLength = CommonParser.parseIntByLittleEndian(packet, 66, 67) / 4;
                 skipLength = ProtocolConstant.ETHERNET_HEADER_LENGTH + ProtocolConstant.IPV6_HEADER_LENGTH
                         + headerLength;
                 if (packet.length <= skipLength) {
@@ -222,8 +224,8 @@ public class ParseTask extends WorkTask {
                 }
                 sourceIp = parseIPV6Address(packet, 22, 38);
                 destinationIp = parseIPV6Address(packet, 38, 54);
-                sourcePort = Integer.parseInt(CommonParser.parseByBigEndian(packet, 54, 56), 16);
-                destinationPort = Integer.parseInt(CommonParser.parseByBigEndian(packet, 56, 58), 16);
+                sourcePort = CommonParser.parseIntByBigEndian(packet, 54, 56);
+                destinationPort = CommonParser.parseIntByBigEndian(packet, 56, 58);
             }
             PacketData packetData = new PacketData(packetId.get(), identifyPacketType(sourceIp, sourcePort));
             packetData.setOriginInfo(originPacket);
@@ -239,7 +241,7 @@ public class ParseTask extends WorkTask {
         if (THREAD_MAP.containsKey(clientId)) {
             THREAD_MAP.get(clientId).addDataToQueue(packetData);
         } else {
-            ParseThread parseThread = new ParseThread(clientId);
+            ParseThread parseThread = databaseTypeEnum.getSuitableProtocolParser(clientId);
             parseThread.addDataToQueue(packetData);
             parseThread.start();
             THREAD_MAP.put(clientId, parseThread);
@@ -299,7 +301,7 @@ public class ParseTask extends WorkTask {
                 long minSqlId = Long.MAX_VALUE;
                 while (!parseThreadQueue.isEmpty()) {
                     ParseThread thread = parseThreadQueue.poll();
-                    if (!thread.getMysqlPacketQueue().isEmpty()) {
+                    if (!thread.getPacketQueue().isEmpty()) {
                         parseThreadQueue.offer(thread);
                         continue;
                     }
@@ -376,7 +378,7 @@ public class ParseTask extends WorkTask {
     }
 
     private String identifyPacketType(String sourceIp, int sourcePort) {
-        if (sourceIp.equals(config.getMysqlServerIp()) && sourcePort == config.getMysqlServerPort()) {
+        if (sourceIp.equals(config.getDatabaseServerIp()) && sourcePort == config.getDatabaseServerPort()) {
             return ProtocolConstant.RESPONSE;
         }
         return ProtocolConstant.REQUEST;
@@ -385,7 +387,7 @@ public class ParseTask extends WorkTask {
     private String parseIPV4Address(byte[] packet, int start, int end) {
         StringBuilder sb = new StringBuilder();
         for (int i = start; i < end; i++) {
-            sb.append(Integer.parseInt(CommonParser.parseByLittleEndian(packet, i, i + 1), 16)).append(".");
+            sb.append(CommonParser.parseIntByLittleEndian(packet, i, i + 1)).append(".");
         }
         sb.setLength(sb.length() - 1);
         return sb.toString();

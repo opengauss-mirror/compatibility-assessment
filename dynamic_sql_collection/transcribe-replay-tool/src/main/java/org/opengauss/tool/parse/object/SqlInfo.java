@@ -123,8 +123,10 @@ public class SqlInfo {
     }
 
     public void setExecuteDuration(long endTime) {
-        this.endTime = endTime;
-        this.executeDuration = endTime - startTime;
+        if (this.endTime == 0) {
+            this.endTime = endTime;
+            this.executeDuration = endTime - startTime;
+        }
     }
 
     /**
