@@ -64,11 +64,23 @@ public class ParseThread extends Thread {
      * source database schema
      */
     protected String schema;
-    private SqlInfo incompleteSql;
+
+    /**
+     * incomplete Sql
+     */
+    protected SqlInfo incompleteSql;
+
+    /**
+     * session id
+     */
+    protected String sessionId;
+
+    /**
+     * is parse packet finished
+     */
+    protected AtomicBoolean isParseFinished;
     private Map<Integer, SqlInfo> preparedSqlMap;
-    private String sessionId;
     private AtomicBoolean isDistributeFinished;
-    private AtomicBoolean isParseFinished;
     private List<Integer> preparedCloseStatements;
 
     /**
@@ -93,7 +105,7 @@ public class ParseThread extends Thread {
      * @param packetData PacketData the packet data
      */
     public void addDataToQueue(PacketData packetData) {
-        this.packetQueue.offer(packetData);
+        this.packetQueue.add(packetData);
     }
 
     @Override
@@ -107,7 +119,7 @@ public class ParseThread extends Thread {
             }
             if (ProtocolConstant.RESPONSE.equals(currentPacket.getPacketType())) {
                 if (incompleteSql != null) {
-                    incompleteSql.setExecuteDuration(currentPacket.getMicrosecondTimestamp());
+                    setDuration(currentPacket.getMicrosecondTimestamp());
                 } else {
                     LOGGER.debug("Parsing SQL from {}.", sessionId);
                 }
@@ -137,16 +149,32 @@ public class ParseThread extends Thread {
                 }
             }
             mergedPacket = mergePacket(packetDataList);
-            parsePacket(mergedPacket);
             packetDataList.clear();
+            parsePacket(mergedPacket);
         }
+        end();
+    }
+
+    /**
+     * End of the current parse thread
+     */
+    protected void end() {
         if (incompleteSql != null && incompleteSql.getEndTime() != 0) {
-            sqlQueue.offer(incompleteSql.clone());
+            sqlQueue.add(incompleteSql.clone());
             incompleteSql = null;
         }
         isParseFinished.set(true);
         LOGGER.debug("Packets from {} have been parsed completed.", sessionId);
         interrupt();
+    }
+
+    /**
+     * Set sql execute duration
+     *
+     * @param microsecondTimestamp long the microsecond timestamp
+     */
+    protected void setDuration(long microsecondTimestamp) {
+        incompleteSql.setExecuteDuration(microsecondTimestamp);
     }
 
     /**
@@ -223,7 +251,12 @@ public class ParseThread extends Thread {
         return true;
     }
 
-    private void parsePacket(PacketData packet) {
+    /**
+     * parse packet
+     *
+     * @param packet PacketData the packet
+     */
+    protected void parsePacket(PacketData packet) {
         if (packet.getData() == null) {
             return;
         }
@@ -331,7 +364,12 @@ public class ParseThread extends Thread {
         }
     }
 
-    private void parsePreparedSql(PacketData packet) {
+    /**
+     * Parse prepared sql
+     *
+     * @param packet PacketData the packet
+     */
+    protected void parsePreparedSql(PacketData packet) {
         byte[] data = packet.getData();
         String sql = CommonParser.parseByteToString(data, 5, data.length).trim();
         SqlInfo sqlObject = new SqlInfo(packet.getPacketId(), true, sql);
@@ -349,7 +387,12 @@ public class ParseThread extends Thread {
         skipResponsePacket();
     }
 
-    private void parsePreparedParameter(PacketData packet) {
+    /**
+     * Parse prepared parameter
+     *
+     * @param packet PacketData the packet
+     */
+    protected void parsePreparedParameter(PacketData packet) {
         byte[] data = packet.getData();
         int statementId = CommonParser.parseIntByLittleEndian(data, 5, 9);
         if (!preparedSqlMap.containsKey(statementId)) {
@@ -417,13 +460,18 @@ public class ParseThread extends Thread {
         skipResponsePacket();
     }
 
-    private void quit(PacketData packet) {
+    /**
+     * Quit current parse thread
+     *
+     * @param packet PacketData the packet
+     */
+    protected void quit(PacketData packet) {
         if (schema == null) {
             return;
         }
         SqlInfo sql = new SqlInfo(packet.getPacketId(), false, "quit");
         sql.encapsulateSql(username, schema, sessionId, 0);
-        sqlQueue.offer(sql);
+        sqlQueue.add(sql);
     }
 
     /**
@@ -457,7 +505,14 @@ public class ParseThread extends Thread {
         return -1;
     }
 
-    private String parsePacketType(PacketData packet) {
+    /**
+     * Parse packet type
+     *
+     * @param packet PacketData the packet
+     *
+     * @return String the packet type
+     */
+    protected String parsePacketType(PacketData packet) {
         return CommonParser.parseByLittleEndian(packet.getData(), 4, 5);
     }
 
@@ -482,9 +537,9 @@ public class ParseThread extends Thread {
     /**
      * Add sql to queue
      */
-    public void addSqLToQueue() {
+    public synchronized void addSqLToQueue() {
         if (incompleteSql != null) {
-            sqlQueue.offer(incompleteSql.clone());
+            sqlQueue.add(incompleteSql.clone());
             incompleteSql = null;
         }
     }

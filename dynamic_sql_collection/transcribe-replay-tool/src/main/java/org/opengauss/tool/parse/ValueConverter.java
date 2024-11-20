@@ -23,7 +23,7 @@ import org.opengauss.tool.parse.object.PreparedValue;
  * @author wangzhengyuan
  * @since 2024/05/15
  **/
-interface ValueConverter {
+public interface ValueConverter {
     /**
      * Convert
      *

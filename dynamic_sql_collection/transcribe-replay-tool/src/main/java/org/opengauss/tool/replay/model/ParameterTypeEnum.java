@@ -15,6 +15,7 @@
 
 package org.opengauss.tool.replay.model;
 
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -77,6 +78,26 @@ public enum ParameterTypeEnum {
         @Override
         public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
             preSqlStmt.setNull(paramIndex, Types.VARCHAR);
+        }
+    },
+
+    /**
+     * object
+     */
+    OBJECT {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            preSqlStmt.setObject(paramIndex, paramValue);
+        }
+    },
+
+    /**
+     * date
+     */
+    DATE {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            preSqlStmt.setDate(paramIndex, Date.valueOf(paramValue));
         }
     };
 

@@ -51,7 +51,7 @@ public class ReplayLogOperator {
      */
     public void printSlowSqlLog(SqlModel sqlModel, long opgsDuration, String explain) {
         SLOW_SQL_LOGGER.info("{}Sql Id is: {}{}Sql is: {} {}Sql Parameters: {} {}Execute Plan is :{} "
-                        + "{}MySQL Execute Duration:{} μs {}openGauss Execute Duration:{} μs",
+                        + "{}Source database Execute Duration:{} μs {}Sink database Execute Duration:{} μs",
                 System.lineSeparator() + "        ", sqlModel.getId(),
                 System.lineSeparator() + "        ", sqlModel.getSql(),
                 System.lineSeparator() + "        ", sqlModel.getParameters().toString(),
@@ -86,7 +86,7 @@ public class ReplayLogOperator {
         for (int i = 1; i <= slowSqlList.size(); i++) {
             SqlModel sqlModel = slowSqlList.get(i - 1);
             TOP_SLOW_SQL_LOGGER.info("{}Slow-Running SQL TOP{}:{}Sql Id is: {}{}Prepare Sql is: {} "
-                            + "{}Sql Parameters: {} {}Execute Time(openGauss):{} μs, Execute Time(MySQL):{} μs "
+                            + "{}Sql Parameters: {} {}Execute Time(SourceDB):{} μs, Execute Time(SinkDB):{} μs "
                             + "{}Execute Plan is :{}{}{}",
                     System.lineSeparator() + "        ", i,
                     System.lineSeparator() + "        ", sqlModel.getId(),

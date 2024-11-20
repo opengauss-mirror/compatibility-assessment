@@ -16,6 +16,7 @@
 package org.opengauss.tool.parse.object;
 
 import org.opengauss.tool.parse.ParseThread;
+import org.opengauss.tool.parse.ogparser.OgMessageParser;
 
 /**
  * Database type enum
@@ -30,6 +31,16 @@ public enum DatabaseTypeEnum {
         @Override
         public ParseThread getSuitableProtocolParser(String clientId) {
             return new ParseThread(clientId);
+        }
+    },
+
+    /**
+     * openGauss
+     */
+    OPENGAUSS {
+        @Override
+        public ParseThread getSuitableProtocolParser(String clientId) {
+            return new OgMessageParser(clientId);
         }
     };
 
@@ -56,5 +67,21 @@ public enum DatabaseTypeEnum {
             }
         }
         throw new IllegalArgumentException("Unsupported database type: " + databaseType);
+    }
+
+    /**
+     * Is include database type
+     *
+     * @param databaseType String the database type
+     *
+     * @return true if the enum include database type
+     */
+    public static boolean isInclude(String databaseType) {
+        for (DatabaseTypeEnum type : values()) {
+            if (type.name().equalsIgnoreCase(databaseType)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

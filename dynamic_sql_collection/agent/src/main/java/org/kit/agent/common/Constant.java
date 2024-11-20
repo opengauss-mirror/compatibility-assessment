@@ -50,9 +50,14 @@ public class Constant {
     public static final String STAT_SQLSERVER = "com/microsoft/sqlserver/jdbc/SQLServerStatement";
 
     /**
+     * STAT_POSTGRESQL
+     */
+    public static final String STAT_POSTGRESQL = "org/postgresql/jdbc/PgStatement";
+
+    /**
      * STAT_OPENGAUSS
      */
-    public static final String STAT_OPENGAUSS = "org/postgresql/jdbc/PgStatement";
+    public static final String STAT_OPENGAUSS = "org/opengauss/jdbc/PgStatement";
 
     /**
      * STAT_ORACLE
@@ -75,9 +80,14 @@ public class Constant {
     public static final String PRE_SQLSERVER = "com/microsoft/sqlserver/jdbc/SQLServerPreparedStatement";
 
     /**
+     * PRE_POSTGRESQL
+     */
+    public static final String PRE_POSTGRESQL = "org/postgresql/jdbc/PgPreparedStatement";
+
+    /**
      * PRE_OPENGAUSS
      */
-    public static final String PRE_OPENGAUSS = "org/postgresql/jdbc/PgPreparedStatement";
+    public static final String PRE_OPENGAUSS = "org/opengauss/jdbc/PgPreparedStatement";
 
     /**
      * PRE_ORACLE
@@ -93,13 +103,13 @@ public class Constant {
      * statClassName
      */
     public static final List<String> STATCLASSNAME = List.of(
-            STAT_MYSQL8, STAT_MYSQL5, STAT_SQLSERVER, STAT_OPENGAUSS, STAT_ORACLE);
+            STAT_MYSQL8, STAT_MYSQL5, STAT_SQLSERVER, STAT_POSTGRESQL, STAT_OPENGAUSS, STAT_ORACLE);
 
     /**
      * preClassName
      */
     public static final List<String> PRECLASSNAME = List.of(
-            PRE_MYSQL8, PRE_MYSQL5, PRE_SQLSERVER, PRE_OPENGAUSS, PRE_ORACLE);
+            PRE_MYSQL8, PRE_MYSQL5, PRE_SQLSERVER, PRE_POSTGRESQL, PRE_OPENGAUSS, PRE_ORACLE);
 
     private static final String NEWLINE = StrUtil.LF;
     private static final String STACK_NAME = ".attach";

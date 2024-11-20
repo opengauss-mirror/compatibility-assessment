@@ -78,7 +78,7 @@ public class PreparedValue {
                 this.type = "string";
                 break;
             default:
-                this.type = "unknow";
+                this.type = type;
         }
     }
 }

@@ -131,7 +131,7 @@ public abstract class ReplayMainTask extends WorkTask {
         LOGGER.info("start to draw...");
         XYDataset dataset = createDataSet();
         JFreeChart chart = ChartFactory.createXYLineChart(
-                "SQL Duration of MySQL and openGauss",
+                "SQL Duration of Source and Sink database",
                 "Sql Id",
                 "Duration(μs)",
                 dataset,
