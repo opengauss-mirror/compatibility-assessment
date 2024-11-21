@@ -73,8 +73,8 @@ public final class OgDataTypeConverter {
     public static String getOgDataType(int oid) {
         String dataType = OID_TO_DATA_TYPE_MAP.get(oid);
         if (dataType == null) {
-            LOGGER.warn("Unknown OG data type oid: {}, will process by string type", oid);
-            return "unknown";
+            LOGGER.warn("Unknown OG data type oid: {}, will process by object type", oid);
+            return "object";
         }
         return dataType;
     }
