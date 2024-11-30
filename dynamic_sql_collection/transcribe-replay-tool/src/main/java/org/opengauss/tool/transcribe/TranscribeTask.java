@@ -197,7 +197,7 @@ public class TranscribeTask extends WorkTask {
         for (Map.Entry<String, String> map : parameterMap.entrySet()) {
             command.append(" ").append(map.getKey()).append(" ").append(map.getValue());
         }
-        return command.toString();
+        return command.toString().trim();
     }
 
     /**
@@ -530,7 +530,7 @@ public class TranscribeTask extends WorkTask {
             isCatchFinished.set(true);
             return;
         }
-        process.stop();
+        process.stop(config.getTranscribeMode());
         tcpdump.interrupt();
         isCatchFinished.set(true);
         LOGGER.info("Network traffic collection completed.");
