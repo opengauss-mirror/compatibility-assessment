@@ -15,10 +15,12 @@
 
 package org.opengauss.tool.transcribe;
 
+import org.opengauss.tool.utils.ConfigReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Description: Command process
@@ -41,10 +43,24 @@ public class CommandProcess implements Runnable {
     }
 
     /**
-     * stop
+     * Stop capture process
+     *
+     * @param transcribeMode String the transcribe mode
      */
-    public void stop() {
-        process.destroyForcibly();
+    public void stop(String transcribeMode) {
+        if (ConfigReader.ATTACH.equals(transcribeMode) || !isStopSuccessfully()) {
+            process.destroyForcibly();
+        }
+    }
+
+    private boolean isStopSuccessfully() {
+        String killCommand = "pkill -SIGTERM -f " + command.split(" ")[0].trim();
+        try {
+            Process pkillProcess = Runtime.getRuntime().exec(killCommand);
+            return pkillProcess.waitFor(10, TimeUnit.SECONDS);
+        } catch (InterruptedException | IOException e) {
+            return false;
+        }
     }
 
     @Override
