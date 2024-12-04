@@ -99,6 +99,16 @@ public enum ParameterTypeEnum {
         public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
             preSqlStmt.setDate(paramIndex, Date.valueOf(paramValue));
         }
+    },
+
+    /**
+     * long
+     */
+    LONG {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            preSqlStmt.setLong(paramIndex, Long.parseLong(paramValue));
+        }
     };
 
     /**
