@@ -428,3 +428,13 @@ sql.table.drop=false
 https://dev.mysql.com/doc/dev/mysql-server/latest/PAGE_PROTOCOL.html
 ~~~
 
+2.常见问题：
+Q：在openEuler 20.03 x86_64环境上执行tcpdump录制失败报错tcpdump: error while loading shared libraries: libcrypto.so.10: cannot open shared object file: No such file or dir怎么办？
+A：在transcribe-replay-tool/plugin/x86_64中有一个运行库文件libcrypto.so.1.0.2k，可以将其复制到/usr/lib64/下面
+cp -r transcribe-replay-tool/plugin/x86_64/libcrypto.so.1.0.2k /usr/lib64/
+再执行
+cd /usr/lib64
+进入lib64目录，然后创建软链接
+ln -s /usr/lib64/libcrypto.so.1.0.2k /usr/lib64/libcrypto.so.10
+创建成功后再执行tcpdump就可以了。
+
