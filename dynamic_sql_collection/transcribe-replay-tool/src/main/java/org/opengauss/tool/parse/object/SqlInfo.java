@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 @Data
 public class SqlInfo {
     private static final Pattern PATTERN = Pattern.compile("\\$\\d+");
+    private static final Pattern FUNCTION_PATTERN = Pattern.compile("FROM\\s+\\S+\\s*\\(");
 
     private long sqlId;
     private boolean isPbe;
@@ -150,7 +151,27 @@ public class SqlInfo {
         if (upperSql.startsWith("/*")) {
             upperSql = upperSql.substring(upperSql.indexOf("*/") + 2);
         }
-        this.isQuery = upperSql.startsWith("SELECT") || upperSql.startsWith("SHOW");
+        if (upperSql.startsWith("SHOW")) {
+            this.isQuery = true;
+            return;
+        }
+        if (upperSql.startsWith("SELECT")) {
+            this.isQuery = isQuerySql(upperSql);
+            return;
+        }
+        this.isQuery = false;
+    }
+
+    private boolean isQuerySql(String upperSql) {
+        if (!upperSql.contains("FROM")) {
+            return false;
+        }
+        return !isContainFunctionCall(upperSql.substring(upperSql.indexOf("FROM")));
+    }
+
+    private boolean isContainFunctionCall(String upperSql) {
+        Matcher matcher = FUNCTION_PATTERN.matcher(upperSql);
+        return matcher.find();
     }
 
     /**
