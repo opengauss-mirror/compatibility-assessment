@@ -18,6 +18,7 @@ package org.opengauss.tool.config.parse;
 import lombok.Data;
 import org.opengauss.tool.config.DatabaseConfig;
 import org.opengauss.tool.config.FileConfig;
+import org.opengauss.tool.config.ResultFileConfig;
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.FileOperator;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public class ParseConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParseConfig.class);
 
     private FileConfig fileConfig;
+    private ResultFileConfig resultFileConfig;
     private DatabaseConfig opengaussConfig;
     private String storageMode;
     private String packetFilePath;
@@ -46,6 +48,8 @@ public class ParseConfig {
     private int queueSizeLimit;
     private int packetBatchSize;
     private boolean isDropPreviousSql;
+    private boolean isDropTcpdumpFile;
+    private int parseMaxTime;
 
     /**
      * Load parse configure properties
@@ -60,6 +64,9 @@ public class ParseConfig {
         this.databaseServerPort = Integer.parseInt(props.getProperty(ConfigReader.TCPDUMP_DATABASE_PORT));
         this.queueSizeLimit = Integer.parseInt(props.getProperty(ConfigReader.QUEUE_SIZE_LIMIT, "10000"));
         this.packetBatchSize = Integer.parseInt(props.getProperty(ConfigReader.PACKET_BATCH_SIZE, "10000"));
+        this.isDropTcpdumpFile = Boolean.parseBoolean(props.getProperty(ConfigReader.TCPDUMP_FILE_DROP, "false"));
+        this.parseMaxTime = Integer.parseInt(props.getProperty(ConfigReader.PARSE_MAX_TIME, "0"));
+        loadResultFileConfig(props);
         if (ConfigReader.JSON.equalsIgnoreCase(storageMode)) {
             loadFileConfig(props);
         } else {
@@ -80,6 +87,21 @@ public class ParseConfig {
                 FileOperator.CURRENT_PATH + ConfigReader.DEFAULT_SQL_FILES + File.separator)));
         fileConfig.setFileName(props.getProperty(ConfigReader.SQL_FILE_NAME, ConfigReader.DEFAULT_SQL_FILE));
         fileConfig.setFileSize(Integer.parseInt(props.getProperty(ConfigReader.SQL_FILE_SIZE, "10")));
+    }
+
+    /**
+     * Load select result file configure
+     *
+     * @param props Properties the props
+     */
+    public void loadResultFileConfig(Properties props) {
+        resultFileConfig = new ResultFileConfig();
+        resultFileConfig.setParseResult(Boolean.parseBoolean(
+                props.getProperty(ConfigReader.PARSE_SELECT_RESULT, "false")));
+        resultFileConfig.setSelectResultPath(props.getProperty(ConfigReader.SELECT_RESULT_PATH));
+        resultFileConfig.setResultFileName(props.getProperty(ConfigReader.RESULT_FILE_NAME));
+        resultFileConfig.setResultFileSize(Integer.parseInt(
+                props.getProperty(ConfigReader.RESULT_FILE_SIZE, "10")));
     }
 
     /**

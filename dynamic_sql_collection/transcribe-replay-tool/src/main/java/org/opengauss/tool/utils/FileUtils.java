@@ -86,6 +86,9 @@ public final class FileUtils {
                 line = line.trim();
                 if (StringUtils.isNotEmpty(line)) {
                     JSONObject jsonObject = new JSONObject(line);
+                    if (jsonObject.get("sql").equals("finished")) {
+                        break;
+                    }
                     SqlModel sqlModel = new SqlModel(jsonObject);
                     sqlModels.add(sqlModel);
                 }
@@ -115,5 +118,20 @@ public final class FileUtils {
             sqlLists.add(sqlModelList.subList(i, toIndex));
         }
         return sqlLists;
+    }
+
+    /**
+     * isFinished
+     *
+     * @param fileCatalogue file catalogue
+     * @return boolean
+     */
+    public static boolean isFinished(String fileCatalogue) {
+        String filePath = fileCatalogue + File.separator + "endFile";
+        File file = new File(filePath);
+        if (file.exists()) {
+            return true;
+        }
+        return false;
     }
 }

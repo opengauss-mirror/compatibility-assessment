@@ -41,6 +41,7 @@ import java.util.Locale;
 @NoArgsConstructor
 public class SqlModel {
     private int id;
+    private long packetId;
     private boolean isQuery;
     private boolean isPrepared;
     private String session;
@@ -64,6 +65,7 @@ public class SqlModel {
      */
     public SqlModel(ResultSet rs, Connection storeConn, String tableName) throws SQLException {
         this.id = rs.getInt("id");
+        this.packetId = rs.getLong("packet_id");
         this.isQuery = rs.getBoolean("is_query");
         this.isPrepared = rs.getBoolean("is_prepared");
         this.session = rs.getString("session").trim();
@@ -85,6 +87,7 @@ public class SqlModel {
      */
     public SqlModel(JSONObject jsonObject) {
         this.id = jsonObject.getInt("id");
+        this.packetId = jsonObject.getLong("packetId");
         this.isQuery = jsonObject.getBoolean("isQuery");
         this.isPrepared = jsonObject.getBoolean("isPrepared");
         this.session = jsonObject.getString("session");

@@ -61,6 +61,11 @@ public final class ConfigReader {
     public static final String DEFAULT_SQL_FILE = "sql-file";
 
     /**
+     * default result file name
+     */
+    public static final String DEFAULT_RESULT_FILE = "select-result";
+
+    /**
      * default sql table name
      */
     public static final String DEFAULT_SQL_TABLE = "sql_table";
@@ -213,6 +218,16 @@ public final class ConfigReader {
      * tcpdump file size
      */
     public static final String TCPDUMP_FILE_SIZE = "tcpdump.file.size";
+
+    /**
+     * drop all tcpdump-file
+     */
+    public static final String TCPDUMP_FILE_DROP = "tcpdump.file.drop";
+
+    /**
+     * parse file max time
+     */
+    public static final String PARSE_MAX_TIME = "parse.max.time";
 
     /**
      * file count limit
@@ -371,6 +386,31 @@ public final class ConfigReader {
     public static final String SQL_TABLE_DROP = "sql.table.drop";
 
     /**
+     * parse select result
+     */
+    public static final String PARSE_SELECT_RESULT = "parse.select.result";
+
+    /**
+     * select result path
+     */
+    public static final String SELECT_RESULT_PATH = "select.result.path";
+
+    /**
+     * result file name
+     */
+    public static final String RESULT_FILE_NAME = "result.file.name";
+
+    /**
+     * result file size
+     */
+    public static final String RESULT_FILE_SIZE = "result.file.size";
+
+    /**
+     * compare select result
+     */
+    public static final String COMPARE_SELECT_RESULT = "compare.select.result";
+
+    /**
      * replay
      */
     public static final String REPLAY = "replay";
@@ -485,6 +525,16 @@ public final class ConfigReader {
      * sql replay session black list
      */
     public static final String SQL_REPLAY_SESSION_BLACK_LIST = "sql.replay.session.black.list";
+
+    /**
+     * replay max time
+     */
+    public static final String REPLAY_MAX_TIME = "replay.max.time";
+
+    /**
+     * whether to replay according to the time interval of the source
+     */
+    public static final String SOURCE_TIME_INTERVAL_REPLAY = "source.time.interval.replay";
 
     /**
      * slow db
@@ -631,6 +681,12 @@ public final class ConfigReader {
         CONFIG_MAP.put(TCPDUMP_DATABASE_PORT, matchPort(props.getProperty(TCPDUMP_DATABASE_PORT)));
         CONFIG_MAP.put(QUEUE_SIZE_LIMIT, matchNumber(props.getProperty(QUEUE_SIZE_LIMIT, "10000")));
         CONFIG_MAP.put(PACKET_BATCH_SIZE, matchNumber(props.getProperty(PACKET_BATCH_SIZE, "10000")));
+        CONFIG_MAP.put(TCPDUMP_FILE_DROP, matchBoolean(props.getProperty(TCPDUMP_FILE_DROP, "false")));
+        CONFIG_MAP.put(PARSE_MAX_TIME, matchInt(props.getProperty(PARSE_MAX_TIME, "0")));
+        CONFIG_MAP.put(PARSE_SELECT_RESULT, matchBoolean(props.getProperty(PARSE_SELECT_RESULT, "false")));
+        CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
+        CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
+        CONFIG_MAP.put(RESULT_FILE_SIZE, matchNumber(props.getProperty(RESULT_FILE_SIZE, "10")));
     }
 
     private static void putGeneralDatabaseConfig(Properties props) {
@@ -724,6 +780,14 @@ public final class ConfigReader {
                 props.getProperty(SQL_REPLAY_SESSION_WHITE_LIST, "[]")));
         CONFIG_MAP.put(SQL_REPLAY_SESSION_BLACK_LIST, matchSessionList(
                 props.getProperty(SQL_REPLAY_SESSION_BLACK_LIST, "[]")));
+        CONFIG_MAP.put(REPLAY_MAX_TIME, matchInt(props.getProperty(REPLAY_MAX_TIME, "0")));
+        CONFIG_MAP.put(SOURCE_TIME_INTERVAL_REPLAY, matchBoolean(
+                props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "true")));
+        CONFIG_MAP.put(COMPARE_SELECT_RESULT, matchBoolean(
+                props.getProperty(COMPARE_SELECT_RESULT, "false")));
+        CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
+        CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(
+                props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
     }
 
     private static void putTargetDbConfig(Properties props) {
@@ -790,6 +854,14 @@ public final class ConfigReader {
         }
         String regex = "^[1-9][0-9]*$";
         return port.matches(regex);
+    }
+
+    private static boolean matchInt(String value) {
+        if (value == null) {
+            return false;
+        }
+        String regex = "^[0-9]*$";
+        return value.matches(regex);
     }
 
     private static boolean matchIp(String ip) {

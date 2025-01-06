@@ -18,6 +18,7 @@ package org.opengauss.tool.replay.model;
 import org.opengauss.tool.replay.task.SingleReplayThread;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,6 +113,27 @@ public class SingleThreadModel {
      */
     public Map<String, Integer> getSessionThreadMap() {
         return sessionThreadMap;
+    }
+
+    /**
+     * removeSession
+     *
+     * @param sessionSet session set
+     */
+    public void removeSession(Set<String> sessionSet) {
+        for (String session : sessionSet) {
+            sessionThreadMap.remove(session);
+        }
+    }
+
+    /**
+     * removeThread
+     *
+     * @param name thread name
+     */
+    public void removeThread(String name) {
+        int threadId = Integer.parseInt(name.split("-")[1]);
+        threadMap.remove(threadId);
     }
 }
 

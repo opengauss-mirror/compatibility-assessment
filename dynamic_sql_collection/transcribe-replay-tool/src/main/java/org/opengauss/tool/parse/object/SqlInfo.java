@@ -37,6 +37,7 @@ public class SqlInfo {
     private static final Pattern FUNCTION_PATTERN = Pattern.compile("FROM\\s+\\S+\\s*\\(");
 
     private long sqlId;
+    private long packetId;
     private boolean isPbe;
     private String sql;
     private String sessionId;
@@ -85,6 +86,7 @@ public class SqlInfo {
     public SqlInfo(long sqlId, boolean isPbe, String sql) {
         init();
         this.sqlId = sqlId;
+        this.packetId = sqlId;
         this.isPbe = isPbe;
         this.sql = sql;
         setQuery();
@@ -129,6 +131,7 @@ public class SqlInfo {
      */
     public void copyToOther(SqlInfo copy) {
         copy.sqlId = this.sqlId;
+        copy.packetId = this.packetId;
         copy.isQuery = this.isQuery;
         copy.isPbe = this.isPbe;
         copy.sessionId = this.sessionId;
@@ -222,6 +225,7 @@ public class SqlInfo {
     public String format(boolean isIncludeExecuteDuration) {
         json.clear();
         json.fluentPut("id", sqlId)
+                .fluentPut("packetId", packetId)
                 .fluentPut("isQuery", isQuery)
                 .fluentPut("isPrepared", isPbe)
                 .fluentPut("session", sessionId)

@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -62,9 +63,20 @@ public class ReplayDbTask extends ReplayMainTask {
                     + t.getName() + e.getMessage()));
             readThread.start();
             while (!isReadEnd.get() || !sqlModelListQueue.isEmpty()) {
-                List<SqlModel> sqlModelList = sqlModelListQueue.take();
-                for (SqlModel sqlModel : sqlModelList) {
-                    replaySql(sqlModel);
+                List<SqlModel> sqlModelList = sqlModelListQueue.poll(1, TimeUnit.SECONDS);
+                if (sqlModelList == null) {
+                    continue;
+                }
+                // If the sqlModelListQueue empty but readEnd is false, wait until the readEnd is true,
+                // prevent the thread from not ending properly due to not setting readfinish
+                while (!isReadEnd.get() && sqlModelListQueue.isEmpty()) {
+                    sleep(1000);
+                }
+                for (int i = 0; i < sqlModelList.size(); i++) {
+                    if (isReadEnd.get() && sqlModelListQueue.isEmpty() && i == sqlModelList.size() - 1) {
+                        ProcessModel.getInstance().setReadFinish();
+                    }
+                    replaySql(sqlModelList.get(i));
                 }
             }
             LOGGER.info("readThread will be interrupt");
@@ -79,43 +91,58 @@ public class ReplayDbTask extends ReplayMainTask {
                 ConnectionFactory.OPENGAUSS);
         String storageTableName = replayConfig.getSourceDbConfig().getTableName();
         try {
-            int count = replaySqlOperator.getSqlCount(storeConn, storageTableName);
-            ProcessModel processModel = ProcessModel.getInstance();
-            processModel.addSqlCount(count);
-            int pageCount = (int) Math.ceil((double) count / PAGINATION);
-            readSqlFromDb(pageCount, storeConn, storageTableName, processModel);
+            readSqlFromDb(storeConn, storageTableName);
         } catch (SQLException | InterruptedException e) {
             LOGGER.error("replay from db has occurred an exception:{}", e.getMessage());
         }
     }
 
-    private void readSqlFromDb(int pageCount, Connection storeConn, String storageTableName, ProcessModel processModel)
+    private void readSqlFromDb(Connection storeConn, String storageTableName)
             throws SQLException, InterruptedException {
+        long startTimeMillis = System.currentTimeMillis();
         Connection connection = storeConn;
-        for (int page = 0; page < pageCount; page++) {
-            LOGGER.info("read sql from db, totalPage:{}, currentPage:{}", pageCount, page);
+        ProcessModel processModel = ProcessModel.getInstance();
+        int point = 0;
+        while (true) {
             List<SqlModel> sqlModels = new ArrayList<>();
             ResultSet rs = null;
             try {
+                sleep(10);
                 rs = replaySqlOperator.getSqlResultSet(connection, storageTableName, PAGINATION,
-                        page + 1);
+                        point);
+                if (!rs.isBeforeFirst()) {
+                    long replayTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
+                    if (replayConfig.getReplayMaxTime() > 0 && replayTime >= replayConfig.getReplayMaxTime()) {
+                        isReadEnd.set(true);
+                        break;
+                    }
+                } else {
+                    LOGGER.info("read sql from db, point:{}", point);
+                }
                 while (rs.next()) {
+                    if ("finished".equals(rs.getString("sql"))) {
+                        isReadEnd.set(true);
+                        break;
+                    }
                     SqlModel sqlModel = new SqlModel(rs, connection, storageTableName);
                     sqlModels.add(sqlModel);
+                    point = sqlModel.getId();
                 }
+                processModel.addSqlCount(sqlModels.size());
             } finally {
                 DatabaseOperator.closeResultSet(rs);
             }
             long startTime = System.currentTimeMillis();
-            sqlModelListQueue.put(sqlModels);
+            if (!sqlModels.isEmpty()) {
+                sqlModelListQueue.put(sqlModels);
+            }
             long endTime = System.currentTimeMillis();
             if ((endTime - startTime) > TIME_OUT_MILLIS) {
                 connection = ConnectionFactory.createConnection(replayConfig.getSourceDbConfig(),
                         ConnectionFactory.OPENGAUSS);
             }
-            if (page == pageCount - 1) {
-                isReadEnd.set(true);
-                processModel.setReadFinish();
+            if (isReadEnd.get()) {
+                break;
             }
         }
     }

@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -235,7 +236,22 @@ public class TranscribeTask extends WorkTask {
             LOGGER.info("All result files have been sent, transcribe completed.");
             stat();
         }
+        sendFinishedFlag();
         threadPool.shutdown();
+    }
+
+    private void sendFinishedFlag() {
+        String filePath = config.getFileConfig().getFilePath() + File.separator + "endFile";
+        File endFile = new File(filePath);
+        try {
+            if (!endFile.exists()) {
+                endFile.createNewFile();
+            }
+            List<File> files = Arrays.asList(endFile);
+            sendFiles(files);
+        } catch (IOException e) {
+            LOGGER.error("failed to write end flag.");
+        }
     }
 
     /**

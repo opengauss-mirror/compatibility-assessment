@@ -72,7 +72,7 @@ public class MultipleReplaySubTask implements ReplaySubTask {
         } else {
             processModel.incrementSkipCount();
         }
-        if (processModel.isReadFinish()) {
+        if (processModel.isAssignFinish()) {
             while (multipleThreadModel.getFinishThreadCount() < replayConfig.getMultiple()) {
                 try {
                     LOGGER.info("replay thread has finished:{}", false);
