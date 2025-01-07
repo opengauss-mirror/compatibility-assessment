@@ -113,6 +113,7 @@ public class SingleReplayThread extends ReplayThread {
             replayLogOperator.printFailSqlLog(sqlModel, errorMessage);
         } else if ("quit".equals(sqlModel.getSql())) {
             processModel.incrementSuccessCount();
+            processModel.incrementReplayCount();
             String session = sqlModel.getSession();
             sessionSet.remove(session);
             closeThread(Collections.singleton(session));
