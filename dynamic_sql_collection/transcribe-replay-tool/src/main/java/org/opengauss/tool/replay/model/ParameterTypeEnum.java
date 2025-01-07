@@ -15,11 +15,18 @@
 
 package org.opengauss.tool.replay.model;
 
+import org.postgresql.util.PGobject;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalTime;
 
 /**
  * ParameterTypeEnum
@@ -36,7 +43,6 @@ public enum ParameterTypeEnum {
             preSqlStmt.setInt(paramIndex, Integer.parseInt(paramValue));
         }
     },
-
     /**
      * double
      */
@@ -46,7 +52,6 @@ public enum ParameterTypeEnum {
             preSqlStmt.setDouble(paramIndex, Double.parseDouble(paramValue));
         }
     },
-
     /**
      * string
      */
@@ -56,7 +61,6 @@ public enum ParameterTypeEnum {
             preSqlStmt.setString(paramIndex, paramValue);
         }
     },
-
     /**
      * timestamp
      */
@@ -70,7 +74,12 @@ public enum ParameterTypeEnum {
             }
         }
     },
-
+    NUMERIC {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            preSqlStmt.setObject(paramIndex, paramValue);
+        }
+    },
     /**
      * null
      */
@@ -80,7 +89,6 @@ public enum ParameterTypeEnum {
             preSqlStmt.setNull(paramIndex, Types.VARCHAR);
         }
     },
-
     /**
      * object
      */
@@ -90,7 +98,6 @@ public enum ParameterTypeEnum {
             preSqlStmt.setObject(paramIndex, paramValue);
         }
     },
-
     /**
      * date
      */
@@ -100,7 +107,16 @@ public enum ParameterTypeEnum {
             preSqlStmt.setDate(paramIndex, Date.valueOf(paramValue));
         }
     },
-
+    /**
+     * time
+     */
+    TIME {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            LocalTime localTime = LocalTime.parse(paramValue);
+            preSqlStmt.setTime(paramIndex, Time.valueOf(localTime));
+        }
+    },
     /**
      * long
      */
@@ -108,6 +124,47 @@ public enum ParameterTypeEnum {
         @Override
         public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
             preSqlStmt.setLong(paramIndex, Long.parseLong(paramValue));
+        }
+    },
+    /**
+     * bytea
+     */
+    BYTEA {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            byte[] bytes = paramValue.getBytes(StandardCharsets.UTF_8);
+            preSqlStmt.setBytes(paramIndex, bytes);
+        }
+    },
+    /**
+     * bit
+     */
+    BIT {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            preSqlStmt.setObject(paramIndex, paramValue, Types.BIT);
+        }
+    },
+    /**
+     * blob
+     */
+    BLOB {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            InputStream blobStream = new ByteArrayInputStream(paramValue.getBytes(StandardCharsets.UTF_8));
+            preSqlStmt.setBlob(paramIndex, blobStream);
+        }
+    },
+    /**
+     * json
+     */
+    JSON {
+        @Override
+        public void setParam(PreparedStatement preSqlStmt, int paramIndex, String paramValue) throws SQLException {
+            PGobject jsonObject = new PGobject();
+            jsonObject.setType("json");
+            jsonObject.setValue(paramValue.replaceAll("\\\\", ""));
+            preSqlStmt.setObject(paramIndex, jsonObject);
         }
     };
 
@@ -124,7 +181,7 @@ public enum ParameterTypeEnum {
     /**
      * get enum instance from type name
      *
-     * @param typeStr  typeStr
+     * @param typeStr typeStr
      * @return ParameterType
      */
     public static ParameterTypeEnum fromTypeName(String typeStr) {
