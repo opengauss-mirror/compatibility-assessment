@@ -176,6 +176,7 @@ public class TranscribeTask extends WorkTask {
             stop(true);
             if (!config.shouldSendFile()) {
                 stat();
+                sendFinishedFlag(false);
             }
             scheduledExecutorService.shutdown();
         }
@@ -236,11 +237,11 @@ public class TranscribeTask extends WorkTask {
             LOGGER.info("All result files have been sent, transcribe completed.");
             stat();
         }
-        sendFinishedFlag();
+        sendFinishedFlag(true);
         threadPool.shutdown();
     }
 
-    private void sendFinishedFlag() {
+    private void sendFinishedFlag(boolean shouldSend) {
         String filePath = config.getFileConfig().getFilePath() + File.separator + "endFile";
         File endFile = new File(filePath);
         try {
@@ -248,7 +249,9 @@ public class TranscribeTask extends WorkTask {
                 endFile.createNewFile();
             }
             List<File> files = Arrays.asList(endFile);
-            sendFiles(files);
+            if (shouldSend) {
+                sendFiles(files);
+            }
         } catch (IOException e) {
             LOGGER.error("failed to write end flag.");
         }
