@@ -21,6 +21,10 @@ import org.opengauss.tool.utils.CommonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,7 +39,7 @@ public final class OgDataTypeConverter {
     private static final Map<Integer, String> OID_TO_DATA_TYPE_MAP = new HashMap<>();
 
     static {
-        OID_TO_DATA_TYPE_MAP.put(0, "object");
+        OID_TO_DATA_TYPE_MAP.put(0, "unspecified");
         OID_TO_DATA_TYPE_MAP.put(21, "int");
         OID_TO_DATA_TYPE_MAP.put(23, "int");
         OID_TO_DATA_TYPE_MAP.put(5545, "int");
@@ -45,9 +49,14 @@ public final class OgDataTypeConverter {
         OID_TO_DATA_TYPE_MAP.put(26, "long");
         OID_TO_DATA_TYPE_MAP.put(20, "long");
         OID_TO_DATA_TYPE_MAP.put(4407, "long");
+        OID_TO_DATA_TYPE_MAP.put(1700, "numeric");
         OID_TO_DATA_TYPE_MAP.put(1043, "string");
         OID_TO_DATA_TYPE_MAP.put(701, "double");
         OID_TO_DATA_TYPE_MAP.put(1082, "date");
+        OID_TO_DATA_TYPE_MAP.put(17, "bytea");
+        OID_TO_DATA_TYPE_MAP.put(1560, "bit");
+        OID_TO_DATA_TYPE_MAP.put(114, "json");
+        OID_TO_DATA_TYPE_MAP.put(88, "blob");
     }
 
     private static PreparedValue convertStringValue(byte[] data, int start) {
@@ -89,7 +98,62 @@ public final class OgDataTypeConverter {
      */
     public static PreparedValue getValue(String dataType, byte[] data, int startIndex) {
         PreparedValue preparedValue = convertStringValue(data, startIndex);
-        preparedValue.setType(dataType);
+        if ("unspecified".equals(dataType)) {
+            specificUnknownType(preparedValue);
+        } else {
+            preparedValue.setType(dataType);
+        }
         return preparedValue;
+    }
+
+    private static void specificUnknownType(PreparedValue preparedValue) {
+        String value = preparedValue.getValue();
+        if (value == null) {
+            preparedValue.setType("object");
+            return;
+        }
+        if (value.trim().endsWith("+08")) {
+            value = value.trim().substring(0, value.trim().length() - 3).trim();
+        }
+        if (isMatchDate(value)) {
+            preparedValue.setType("date");
+            preparedValue.setValue(value);
+        } else if (isMatchTimestamp(value)) {
+            preparedValue.setType("timestamp");
+            preparedValue.setValue(value);
+        } else if (isMatchTime(value)) {
+            preparedValue.setType("time");
+            preparedValue.setValue(value);
+        } else {
+            preparedValue.setType("object");
+        }
+    }
+
+    private static boolean isMatchTime(String value) {
+        try {
+            LocalTime localTime = LocalTime.parse(value);
+            Time.valueOf(localTime);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isMatchTimestamp(String value) {
+        try {
+            Timestamp.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean isMatchDate(String value) {
+        try {
+            Date.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        return true;
     }
 }
