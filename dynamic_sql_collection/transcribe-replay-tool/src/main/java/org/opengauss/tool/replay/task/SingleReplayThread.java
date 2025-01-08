@@ -140,7 +140,9 @@ public class SingleReplayThread extends ReplayThread {
                 }
             }
         }
-        processModel.incrementReplayCount();
+        if (!"quit".equals(sqlModel.getSql())) {
+            processModel.incrementReplayCount();
+        }
         if (processModel.getReplayCount() == processModel.getSqlCount()) {
             clearAllThread();
         }
