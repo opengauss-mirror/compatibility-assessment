@@ -15,7 +15,6 @@
 
 package org.opengauss.tool.parse;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.opengauss.tool.config.ResultFileConfig;
@@ -23,15 +22,11 @@ import org.opengauss.tool.parse.object.PacketData;
 import org.opengauss.tool.parse.object.PreparedValue;
 import org.opengauss.tool.parse.object.ProtocolConstant;
 import org.opengauss.tool.parse.object.SqlInfo;
+import org.opengauss.tool.parse.object.SelectResult;
 import org.opengauss.tool.utils.CommonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.OutputStreamWriter;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -39,6 +34,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -106,17 +103,13 @@ public class ParseThread extends Thread {
     protected ResultFileConfig resultFileConfig;
 
     /**
-     * file id
-     */
-    protected int fileId = 1;
-
-    /**
      * is parse packet finished
      */
     protected AtomicBoolean isParseFinished;
     private Map<Integer, SqlInfo> preparedSqlMap;
     private AtomicBoolean isDistributeFinished;
     private List<Integer> preparedCloseStatements;
+    private Set<Long> selectPacketIds = new HashSet<>();
 
     /**
      * Constructor
@@ -192,7 +185,10 @@ public class ParseThread extends Thread {
             mergedPacket = mergePacket(packetDataList);
             packetDataList.clear();
             if (ProtocolConstant.RESPONSE.equals(currentPacket.getPacketType())) {
-                parseResponsePacket(mergedPacket);
+                if (!selectPacketIds.contains(previousSql.getPacketId())) {
+                    parseResponsePacket(mergedPacket);
+                    selectPacketIds.add(previousSql.getPacketId());
+                }
             } else {
                 parsePacket(mergedPacket);
             }
@@ -321,8 +317,9 @@ public class ParseThread extends Thread {
         byte[] data = packet.getData();
         int dataPoint = handleField(data);
         List<List<String>> dataList = new ArrayList<>();
-        int rowsCount = parseRowPacket(data, dataPoint, dataList);
-        writeResultToFile(packet, dataList, rowsCount);
+        long rowCount = parseRowPacket(data, dataPoint, dataList, packet);
+        SelectResult sr = new SelectResult(packet.getPacketId(), previousSql, rowCount, dataList);
+        ParseTask.addResultToQueue(sr);
     }
 
     /**
@@ -347,43 +344,49 @@ public class ParseThread extends Thread {
      * @param data packet data
      * @param dataPoint data row point
      * @param dataList data row
+     * @param packet packet data
      * @return rows count
      */
-    protected int parseRowPacket(byte[] data, int dataPoint, List<List<String>> dataList) {
-        int rowsCount = 0;
+    protected long parseRowPacket(byte[] data, int dataPoint, List<List<String>> dataList, PacketData packet) {
+        long rowCount = 0L;
         int fieldNumber = data[4];
         int point = dataPoint;
-        while (point < data.length - 11) {
-            point = point + 4;
-            List<String> row = new ArrayList<>();
-            for (int i = 0; i < fieldNumber; i++) {
-                int textLen;
-                int type = data[point] & 0xFF;
-                switch (type) {
-                    case FORMAT_FC:
-                        textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 3));
-                        point = point + 3;
-                        break;
-                    case FORMAT_FD:
-                        textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 4));
-                        point = point + 4;
-                        break;
-                    case FORMAT_FE:
-                        textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 9));
-                        point = point + 9;
-                        break;
-                    default:
-                        textLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 1));
-                        point = point + 1;
+        try {
+            while (point < data.length - 11) {
+                point = point + 4;
+                List<String> row = new ArrayList<>();
+                for (int i = 0; i < fieldNumber; i++) {
+                    int textLen;
+                    int type = data[point] & 0xFF;
+                    switch (type) {
+                        case FORMAT_FC:
+                            textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 3));
+                            point = point + 3;
+                            break;
+                        case FORMAT_FD:
+                            textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 4));
+                            point = point + 4;
+                            break;
+                        case FORMAT_FE:
+                            textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 9));
+                            point = point + 9;
+                            break;
+                        default:
+                            textLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 1));
+                            point = point + 1;
+                    }
+                    String text = new String(data, point, textLen, CHARSET);
+                    row.add(text);
+                    point = point + textLen;
                 }
-                String text = new String(data, point, textLen, CHARSET);
-                row.add(text);
-                point = point + textLen;
+                rowCount++;
+                dataList.add(row);
             }
-            rowsCount++;
-            dataList.add(row);
+        } catch (IndexOutOfBoundsException e) {
+            LOGGER.error("parse row packet error, fileName is {}, idInFile is {}, packetId is {}, sqlPacketId is {} : ",
+                    packet.getLocationFile(), packet.getIdInFile(), packet.getPacketId(), previousSql.getPacketId(), e);
         }
-        return rowsCount;
+        return rowCount;
     }
 
     /**
@@ -401,50 +404,12 @@ public class ParseThread extends Thread {
             } else {
                 hex = Integer.toHexString(bytes[i]);
             }
+            if (hex.length() == 1) {
+                hex = "0" + hex;
+            }
             hexString.append(hex);
         }
         return Integer.parseInt(hexString.toString(), 16);
-    }
-
-    /**
-     * write result to file
-     *
-     * @param packet packet data
-     * @param dataList data row
-     * @param rowsCount rows count
-     */
-    protected void writeResultToFile(PacketData packet, List<List<String>> dataList, int rowsCount) {
-        String resultFilePath = resultFileConfig.getSelectResultPath() + File.separator
-                + resultFileConfig.getResultFileName() + "-" + fileId + ".json";
-        File resultFile = new File(resultFilePath);
-        if (!resultFile.exists()) {
-            try {
-                resultFile.createNewFile();
-            } catch (IOException e) {
-                LOGGER.error("IOException occurred while creating result file {}, error message is: {}.",
-                        resultFilePath, e.getMessage());
-            }
-            writeResultToFile(packet, dataList, rowsCount);
-        } else if (resultFile.length() >= (long) resultFileConfig.getResultFileSize() * 1024 * 1024) {
-            fileId++;
-            writeResultToFile(packet, dataList, rowsCount);
-        } else {
-            JSONObject json = new JSONObject();
-            json.fluentPut("sqlPacketId", previousSql.getPacketId())
-                    .fluentPut("sql", previousSql.getSql())
-                    .fluentPut("param", previousSql.getParameterList())
-                    .fluentPut("packetId", packet.getPacketId())
-                    .fluentPut("rowsCount", rowsCount)
-                    .fluentPut("data", dataList);
-            try (BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(resultFilePath, true), StandardCharsets.UTF_8))) {
-                writer.write(json.toString());
-                writer.newLine();
-            } catch (IOException exception) {
-                LOGGER.error("Error occurred during write result to file, error message is: {}",
-                        exception.getMessage());
-            }
-        }
     }
 
     /**

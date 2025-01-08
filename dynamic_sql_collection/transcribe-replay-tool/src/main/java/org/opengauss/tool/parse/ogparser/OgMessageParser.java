@@ -15,7 +15,6 @@
 
 package org.opengauss.tool.parse.ogparser;
 
-import com.alibaba.fastjson.JSONObject;
 import org.opengauss.tool.parse.ParseThread;
 import org.opengauss.tool.parse.object.PacketData;
 import org.opengauss.tool.parse.object.PreparedValue;
@@ -25,12 +24,6 @@ import org.opengauss.tool.utils.CommonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.BufferedWriter;
-import java.io.OutputStreamWriter;
-import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -295,8 +288,10 @@ public class OgMessageParser extends ParseThread {
         }
         preparedSql.setSqlId(packet.getPacketId());
         preparedSql.setStartTime(packet.getMicrosecondTimestamp());
+        preparedSql.setPacketId(packet.getPacketId());
         if (!preparedSql.isPbe()) {
             incompleteSql = preparedSql;
+            previousSql = preparedSql;
             sqlList.add(preparedSql);
             return;
         }
@@ -316,6 +311,7 @@ public class OgMessageParser extends ParseThread {
             paraIndex++;
         }
         incompleteSql = preparedSql;
+        previousSql = preparedSql;
         sqlList.add(preparedSql);
     }
 
@@ -348,25 +344,30 @@ public class OgMessageParser extends ParseThread {
     }
 
     @Override
-    protected int parseRowPacket(byte[] data, int dataPoint, List<List<String>> dataList) {
-        int rowsCount = 0;
+    protected long parseRowPacket(byte[] data, int dataPoint, List<List<String>> dataList, PacketData packet) {
+        long rowCount = 0L;
         int point = dataPoint;
-        while ((char) data[point] == 'D') {
-            point = point + 5;
-            int fieldCount = hexToDecimal(Arrays.copyOfRange(data, point, point + 2));
-            point = point + 2;
-            List<String> row = new ArrayList<>();
-            for (int i = 0; i < fieldCount; i++) {
-                int columnLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 4));
-                point = point + 4;
-                String text = new String(data, point, columnLen, CHARSET);
-                row.add(text);
-                point = point + columnLen;
+        try {
+            while ((char) data[point] == 'D') {
+                point = point + 5;
+                int fieldCount = hexToDecimal(Arrays.copyOfRange(data, point, point + 2));
+                point = point + 2;
+                List<String> row = new ArrayList<>();
+                for (int i = 0; i < fieldCount; i++) {
+                    int columnLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 4));
+                    point = point + 4;
+                    String text = new String(data, point, columnLen, CHARSET);
+                    row.add(text);
+                    point = point + columnLen;
+                }
+                rowCount++;
+                dataList.add(row);
             }
-            rowsCount++;
-            dataList.add(row);
+        } catch (IndexOutOfBoundsException e) {
+            LOGGER.error("parse row packet error, fileName is {}, idInFile is {}, packetId is {}, sqlPacketId is {} : ",
+                    packet.getLocationFile(), packet.getIdInFile(), packet.getPacketId(), previousSql.getPacketId(), e);
         }
-        return rowsCount;
+        return rowCount;
     }
 
     @Override
@@ -379,43 +380,11 @@ public class OgMessageParser extends ParseThread {
             } else {
                 hex = Integer.toHexString(bytes[i]);
             }
+            if (hex.length() == 1) {
+                hex = "0" + hex;
+            }
             hexString.append(hex);
         }
         return Integer.parseInt(hexString.toString(), 16);
-    }
-
-    @Override
-    protected void writeResultToFile(PacketData packet, List<List<String>> dataList, int rowsCount) {
-        String resultFilePath = resultFileConfig.getSelectResultPath() + File.separator
-                + resultFileConfig.getResultFileName() + "-" + fileId + ".json";
-        File resultFile = new File(resultFilePath);
-        if (!resultFile.exists()) {
-            try {
-                resultFile.createNewFile();
-            } catch (IOException e) {
-                LOGGER.error("IOException occurred while creating result file {}, error message is: {}.",
-                        resultFilePath, e.getMessage());
-            }
-            writeResultToFile(packet, dataList, rowsCount);
-        } else if (resultFile.length() >= (long) resultFileConfig.getResultFileSize() * 1024 * 1024) {
-            fileId++;
-            writeResultToFile(packet, dataList, rowsCount);
-        } else {
-            JSONObject json = new JSONObject();
-            json.fluentPut("sqlPacketId", previousSql.getPacketId())
-                    .fluentPut("sql", previousSql.getSql())
-                    .fluentPut("param", previousSql.getParameterList())
-                    .fluentPut("packetId", packet.getPacketId())
-                    .fluentPut("rowsCount", rowsCount)
-                    .fluentPut("data", dataList);
-            try (BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(resultFilePath, true), StandardCharsets.UTF_8))) {
-                writer.write(json.toString());
-                writer.newLine();
-            } catch (IOException exception) {
-                LOGGER.error("Error occurred during write result to file, error message is: {}",
-                        exception.getMessage());
-            }
-        }
     }
 }

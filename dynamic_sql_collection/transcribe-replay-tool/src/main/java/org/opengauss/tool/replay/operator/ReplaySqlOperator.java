@@ -339,7 +339,7 @@ public class ReplaySqlOperator {
             }
             sourceResult.add(row);
         }
-        if (data.size() != sourceResult.size() || !data.equals(sourceResult)) {
+        if (!data.equals(sourceResult)) {
             replayLogOperator.printDataDiffLog(sqlModel, sourceResult, data);
         }
     }
@@ -433,7 +433,7 @@ public class ReplaySqlOperator {
         }
 
         resultMap = resultModels.stream().collect(Collectors.toMap(ResultModel::getSqlPacketId,
-                result -> result));
+                result -> result, (existing, replacement) -> existing));
     }
 
     private String executeAndGetExplain(PreparedStatement preparedStatement) throws SQLException {

@@ -15,6 +15,7 @@
 
 package org.opengauss.tool.parse;
 
+import com.alibaba.fastjson.JSONObject;
 import org.opengauss.tool.config.parse.ParseConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
 import org.opengauss.tool.parse.object.DatabaseTypeEnum;
@@ -23,6 +24,7 @@ import org.opengauss.tool.parse.object.PacketData;
 import org.opengauss.tool.parse.object.ProtocolConstant;
 import org.opengauss.tool.parse.object.SessionInfo;
 import org.opengauss.tool.parse.object.SqlInfo;
+import org.opengauss.tool.parse.object.SelectResult;
 import org.opengauss.tool.utils.CommonParser;
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.DatabaseOperator;
@@ -34,6 +36,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -63,6 +69,8 @@ public class ParseTask extends WorkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(ParseTask.class);
     private static final String PCAP_SUFFIX = ".pcap";
     private static final DateTimeFormatter TIME_PATTERN = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
+    private static final BlockingQueue<SelectResult> RESULT_QUEUE = new LinkedBlockingQueue<>();
+    private static final int BYTE_CONVERSION_RATIO = 1024 * 1024;
 
     private final ParseConfig config;
     private final ThreadPoolExecutor threadPool;
@@ -77,6 +85,7 @@ public class ParseTask extends WorkTask {
     private DatabaseOperator opengaussOperator;
     private FileOperator fileOperator;
     private LocalDateTime startTime;
+    private int fileId = 1;
 
     /**
      * Constructor
@@ -85,8 +94,8 @@ public class ParseTask extends WorkTask {
      */
     public ParseTask(ParseConfig config) {
         this.config = config;
-        this.threadPool = new ThreadPoolExecutor(4, 4, 100, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(4));
+        this.threadPool = new ThreadPoolExecutor(5, 5, 100, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(5));
         this.packetQueue = new LinkedBlockingQueue<>();
         this.packetId = new AtomicLong();
         this.isBlock = new AtomicBoolean(false);
@@ -96,6 +105,15 @@ public class ParseTask extends WorkTask {
         this.sessionInfoSet = new HashSet<>();
         this.databaseTypeEnum = DatabaseTypeEnum.fromTypeName(config.getDatabaseServerType());
         initStorage();
+    }
+
+    /**
+     * add select result to queue
+     *
+     * @param result select result
+     */
+    public static void addResultToQueue(SelectResult result) {
+        RESULT_QUEUE.add(result);
     }
 
     private void initStorage() {
@@ -113,6 +131,9 @@ public class ParseTask extends WorkTask {
         threadPool.execute(this::readPcapFile);
         threadPool.execute(this::distributeData);
         threadPool.execute(this::mergeSql);
+        if (config.getResultFileConfig().isParseResult()) {
+            threadPool.execute(this::saveSelectResult);
+        }
     }
 
     private void readPcapFile() {
@@ -380,6 +401,53 @@ public class ParseTask extends WorkTask {
         LOGGER.info("All sql information have been committed.");
         stat();
         threadPool.shutdown();
+    }
+
+    private void saveSelectResult() {
+        String resultFilePath = config.getResultFileConfig().getSelectResultPath() + File.separator
+                + config.getResultFileConfig().getResultFileName() + "-" + fileId + ".json";
+        File resultFile = new File(resultFilePath);
+        if (!resultFile.exists()) {
+            try {
+                resultFile.createNewFile();
+            } catch (IOException e) {
+                LOGGER.error("IOException occurred while creating result file {}, error message is: {}.",
+                        resultFilePath, e.getMessage());
+            }
+            saveSelectResult();
+        } else if (resultFile.length() >= (long) config.getResultFileConfig().getResultFileSize()
+                * BYTE_CONVERSION_RATIO) {
+            fileId++;
+            saveSelectResult();
+        } else {
+            writeResultToFile(resultFilePath);
+        }
+    }
+
+    private void writeResultToFile(String resultFilePath) {
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(resultFilePath, true), StandardCharsets.UTF_8))) {
+            while (!RESULT_QUEUE.isEmpty() || !isParseFinished.get()) {
+                SelectResult sr = RESULT_QUEUE.poll();
+                if (sr == null) {
+                    sleep(1000);
+                    continue;
+                }
+                JSONObject json = new JSONObject();
+                json.fluentPut("sqlPacketId", sr.getPreviousSql().getPacketId())
+                        .fluentPut("sql", sr.getPreviousSql().getSql())
+                        .fluentPut("param", sr.getPreviousSql().getParameterList())
+                        .fluentPut("packetId", sr.getPacketId())
+                        .fluentPut("rowCount", sr.getRowCount())
+                        .fluentPut("data", sr.getDataList());
+                writer.write(json.toString());
+                writer.flush();
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error occurred during write result to file, error message is: {}",
+                    e.getMessage());
+        }
     }
 
     private void storageFinishedSql() {
