@@ -465,7 +465,11 @@ public class ParseThread extends Thread {
         }
         int sequenceId = CommonParser.parseIntByLittleEndian(packet.getData(), 3, 4);
         if (!ProtocolConstant.REQUEST_TYPE_LIST.contains(requestType)) {
-            initLoginRequest(packet);
+            try {
+                initLoginRequest(packet);
+            } catch (IndexOutOfBoundsException | IllegalArgumentException e) {
+                schema = null;
+            }
             return;
         }
         if (schema == null && !ProtocolConstant.COM_QUIT.equals(requestType)) {
@@ -515,8 +519,6 @@ public class ParseThread extends Thread {
         if (responseData == null) {
             return;
         }
-        // "00" means login success
-        String res = parsePacketType(responseData);
         skipResponsePacket();
     }
 
