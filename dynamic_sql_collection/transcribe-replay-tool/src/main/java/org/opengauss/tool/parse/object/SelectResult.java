@@ -13,35 +13,29 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.tool.replay.model;
+package org.opengauss.tool.parse.object;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.json.JSONArray;
-import org.json.JSONObject;
+
+import java.util.List;
 
 /**
- * ResultModel
+ * Description: select result object
  *
  * @author : zhangting
- * @since : 2024/12/26
+ * @since : 2025/01/14
  */
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class ResultModel {
+public class SelectResult {
     private long packetId;
-    private long sqlPacketId;
-    private JSONArray data;
+    private SqlInfo previousSql;
     private long rowCount;
-    private String sql;
+    private List<List<String>> dataList;
 
-    public ResultModel(JSONObject jsonObject) {
-        this.packetId = jsonObject.getInt("packetId");
-        this.sqlPacketId = jsonObject.getInt("sqlPacketId");
-        this.data = jsonObject.getJSONArray("data");
-        this.rowCount = jsonObject.getInt("rowCount");
-        this.sql = jsonObject.getString("sql");
+    public SelectResult(long packetId, SqlInfo previousSql, long rowCount, List<List<String>> dataList) {
+        this.packetId = packetId;
+        this.previousSql = previousSql;
+        this.rowCount = rowCount;
+        this.dataList = dataList;
     }
 }
