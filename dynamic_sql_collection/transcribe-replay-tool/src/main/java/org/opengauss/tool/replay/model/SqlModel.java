@@ -40,6 +40,23 @@ import java.util.Locale;
 @Setter
 @NoArgsConstructor
 public class SqlModel {
+    private static final List<String> JDBC_SQL_LIST = new ArrayList<>(10);
+
+    static {
+        JDBC_SQL_LIST.add("select version()");
+        JDBC_SQL_LIST.add("SELECT t.oid, t.typname FROM pg_catalog.pg_type t  where t.typname = 'year' or "
+                + "t.typname = 'uint1' or t.typname = 'uint2' or t.typname = 'uint4' or t.typname = 'uint8' or "
+                + "t.typname = '_uint1' or t.typname = '_uint2' or t.typname = '_uint4' or t.typname = '_uint8'");
+        JDBC_SQL_LIST.add("select count(1) from pg_extension where extname = 'dolphin'");
+        JDBC_SQL_LIST.add("show dolphin.b_compatibility_mode");
+        JDBC_SQL_LIST.add("show dolphin.bit_output");
+        JDBC_SQL_LIST.add("select name, setting from pg_settings where name in ('connection_info')");
+        JDBC_SQL_LIST.add("select count(*) from pg_settings where name = 'support_batch_bind' and setting = 'on'");
+        JDBC_SQL_LIST.add("SET extra_float_digits = 3;set client_encoding = 'UTF8'");
+        JDBC_SQL_LIST.add("set dolphin.b_compatibility_mode to on");
+        JDBC_SQL_LIST.add("set connection_info = '{\"driver_name\":\"JDBC\",\"driver_version\":\"@GSVERSION@\"}'");
+    }
+
     private int id;
     private long packetId;
     private boolean isQuery;
@@ -141,5 +158,15 @@ public class SqlModel {
             }
         }
         return parameterList;
+    }
+
+    /**
+     * filter sql within JDBC
+     *
+     * @return boolean
+     */
+    public boolean isJdbcSql() {
+        String compatibilitySql = "select datcompatibility from pg_database where datname=";
+        return JDBC_SQL_LIST.contains(sql) || sql.contains(compatibilitySql);
     }
 }
