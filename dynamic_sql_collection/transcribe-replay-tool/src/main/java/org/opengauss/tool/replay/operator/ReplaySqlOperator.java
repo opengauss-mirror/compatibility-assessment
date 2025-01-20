@@ -513,6 +513,9 @@ public class ReplaySqlOperator {
         if (isInvalidSession(sqlModel) || (replayConfig.isOnlyReplayQuery() && !sqlModel.isQuery())) {
             return true;
         }
+        if (sqlModel.isJdbcSql()) {
+            return true;
+        }
         return sql.contains("mysql-connector-java") || sql.startsWith("show ") || sql.startsWith("set") || sql.contains(
             "@@session.transaction_read_only");
     }
