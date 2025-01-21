@@ -44,6 +44,7 @@ public class ReplayJsonTask extends ReplayMainTask {
     private final AtomicBoolean isFileParseEnd;
     private final ReplayConfig replayConfig;
     private final ProcessModel processModel;
+    private int sqlModelListCount = 0;
 
     /**
      * constructor
@@ -90,11 +91,20 @@ public class ReplayJsonTask extends ReplayMainTask {
         while (true) {
             int fileCount = FileUtils.getFileCount(replayConfig);
             if (fileCount == 0 && !FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+                long replayTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
+                if (replayConfig.getReplayMaxTime() > 0 && replayTime >= replayConfig.getReplayMaxTime()) {
+                    ProcessModel.getInstance().setReplayFinish();
+                    isFileParseEnd.set(true);
+                    break;
+                }
                 sleep(1000);
                 continue;
             }
             if (FileUtils.isFinished(replayConfig.getFileCatalogue())) {
                 pushQueue(fileCount, point);
+                if (fileCount == 0 || sqlModelListCount == 0) {
+                    ProcessModel.getInstance().setReplayFinish();
+                }
                 isFileParseEnd.set(true);
                 break;
             }
@@ -135,6 +145,7 @@ public class ReplayJsonTask extends ReplayMainTask {
                         continue;
                     }
                     sqlModelListQueue.put(sqlModelList);
+                    sqlModelListCount++;
                 }
             }
         } catch (InterruptedException e) {

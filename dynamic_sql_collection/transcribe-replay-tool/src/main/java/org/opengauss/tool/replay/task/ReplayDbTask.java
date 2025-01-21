@@ -45,6 +45,8 @@ public class ReplayDbTask extends ReplayMainTask {
     private static final int TIME_OUT_MILLIS = 5000;
     private static AtomicBoolean isReadEnd;
 
+    private int sqlModelListCount = 0;
+
     /**
      * constructor
      *
@@ -135,6 +137,10 @@ public class ReplayDbTask extends ReplayMainTask {
             long startTime = System.currentTimeMillis();
             if (!sqlModels.isEmpty()) {
                 sqlModelListQueue.put(sqlModels);
+                sqlModelListCount++;
+            }
+            if (sqlModelListCount == 0) {
+                ProcessModel.getInstance().setReplayFinish();
             }
             long endTime = System.currentTimeMillis();
             if ((endTime - startTime) > TIME_OUT_MILLIS) {
