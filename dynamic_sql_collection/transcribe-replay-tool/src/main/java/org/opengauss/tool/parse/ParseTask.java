@@ -144,6 +144,10 @@ public class ParseTask extends WorkTask {
         while (true) {
             List<File> files = getValidPacketFiles(dir);
             if (files.isEmpty() && !FileUtils.isFinished(config.getPacketFilePath())) {
+                long readTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
+                if (config.getParseMaxTime() > 0 && readTime >= config.getParseMaxTime()) {
+                    break;
+                }
                 sleep(1000);
                 continue;
             }
