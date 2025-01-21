@@ -16,8 +16,10 @@
 package org.opengauss.tool.replay.operator;
 
 import org.apache.commons.lang3.StringUtils;
+import org.opengauss.tool.replay.model.FailSqlModel;
 import org.opengauss.tool.replay.model.ParamModel;
 import org.opengauss.tool.replay.model.SqlModel;
+import org.opengauss.tool.utils.FailSqlFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +77,12 @@ public class ReplayLogOperator {
                 System.lineSeparator() + "        ", sqlModel.getSql(),
                 System.lineSeparator() + "        ", sqlModel.getParameters().toString(),
                 System.lineSeparator() + "        ", message);
+        FailSqlModel failSqlModel = new FailSqlModel();
+        failSqlModel.setId(sqlModel.getId());
+        failSqlModel.setSql(sqlModel.getSql());
+        failSqlModel.setParameters(sqlModel.getParameters());
+        failSqlModel.setMessage(message);
+        FailSqlFileUtils.writeFailLogsToFile(failSqlModel);
     }
 
     /**
