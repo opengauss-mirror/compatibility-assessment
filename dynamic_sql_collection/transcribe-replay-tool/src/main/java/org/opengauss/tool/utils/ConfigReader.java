@@ -537,6 +537,11 @@ public final class ConfigReader {
     public static final String SOURCE_TIME_INTERVAL_REPLAY = "source.time.interval.replay";
 
     /**
+     *  whether to record process
+     */
+    public static final String SQL_REPLAY_RECORD_PROCESS = "sql.replay.record.process";
+
+    /**
      * slow db
      */
     public static final String SLOW_DB = "slow_db";
@@ -788,6 +793,8 @@ public final class ConfigReader {
         CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
         CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(
                 props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
+        CONFIG_MAP.put(SQL_REPLAY_RECORD_PROCESS, matchBoolean(
+            props.getProperty(SQL_REPLAY_RECORD_PROCESS, "false")));
     }
 
     private static void putTargetDbConfig(Properties props) {
