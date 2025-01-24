@@ -25,6 +25,7 @@ import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
 import org.opengauss.tool.replay.model.ProcessModel;
 import org.opengauss.tool.replay.model.SqlModel;
+import org.opengauss.tool.replay.operator.RecordOperator;
 import org.opengauss.tool.replay.operator.ReplayLogOperator;
 import org.opengauss.tool.replay.operator.ReplaySqlOperator;
 import org.opengauss.tool.replay.operator.SlowSqlOperator;
@@ -63,6 +64,11 @@ public abstract class ReplayMainTask extends WorkTask {
     protected final ReplayLogOperator replayLogOperator;
 
     /**
+     * processOperator
+     */
+    protected final RecordOperator recordOperator;
+
+    /**
      * replayConfig
      */
     protected ReplayConfig replayConfig;
@@ -83,6 +89,7 @@ public abstract class ReplayMainTask extends WorkTask {
         this.replaySqlOperator = new ReplaySqlOperator(replayConfig);
         this.replayLogOperator = new ReplayLogOperator();
         this.slowSqlOperator = new SlowSqlOperator(replayConfig);
+        this.recordOperator = new RecordOperator();
         this.processModel = ProcessModel.getInstance();
         this.replaySubTask = replayConfig.getMultiple() > 1 ? new MultipleReplaySubTask(replayConfig)
                 : new SingleReplaySubTask(replayConfig);
@@ -97,6 +104,9 @@ public abstract class ReplayMainTask extends WorkTask {
     public void start() {
         startTime = System.currentTimeMillis();
         slowSqlOperator.createSlowTable();
+        if (replayConfig.isRecordProcess()) {
+            recordOperator.recordSqlCount();
+        }
         replaySubTask.init();
         replay();
         while (!ProcessModel.getInstance().isReplayFinish()) {
@@ -116,6 +126,9 @@ public abstract class ReplayMainTask extends WorkTask {
         replayLogOperator.printTopSlowSql(processModel.getSlowSqlQueue());
         slowSqlOperator.exportSlowSql();
         draw();
+        if (replayConfig.isRecordProcess()) {
+            recordOperator.stopRecord();
+        }
     }
 
     /**
@@ -129,6 +142,7 @@ public abstract class ReplayMainTask extends WorkTask {
 
     private void draw() {
         LOGGER.info("start to draw...");
+        recordOperator.recordDuration();
         XYDataset dataset = createDataSet();
         JFreeChart chart = ChartFactory.createXYLineChart(
                 "SQL Duration of Source and Sink database",
