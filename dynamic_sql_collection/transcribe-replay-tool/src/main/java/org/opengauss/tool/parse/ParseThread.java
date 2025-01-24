@@ -240,7 +240,7 @@ public class ParseThread extends Thread {
             return new PacketData();
         }
         PacketData res = packetDataList.get(0);
-        if (packetDataList.size() == 1) {
+        if (packetDataList.size() == 1 || isDataRepetitive(packetDataList)) {
             return res;
         }
         res.setMicrosecondTimestamp(packetDataList.get(packetDataList.size() - 1).getMicrosecondTimestamp());
@@ -258,6 +258,23 @@ public class ParseThread extends Thread {
         res.setData(mergeData);
         res.setMergeInfo(packetDataList.get(0));
         return res;
+    }
+
+    private boolean isDataRepetitive(List<PacketData> packetDataList) {
+        if (packetDataList.size() != 2) {
+            return false;
+        }
+        byte[] origin = packetDataList.get(0).getData();
+        byte[] copy = packetDataList.get(1).getData();
+        if (origin.length != copy.length) {
+            return false;
+        }
+        for (int i = 0; i < origin.length; i++) {
+            if (origin[i] != copy[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private PacketData pollNextPacket() {
