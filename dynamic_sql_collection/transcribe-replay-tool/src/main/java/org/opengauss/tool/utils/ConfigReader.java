@@ -617,6 +617,9 @@ public final class ConfigReader {
 
     private static void checkParseConfig(Properties props) {
         putParseConfig(props);
+        if (checkIsParseResult(props)) {
+            putParseSelectConfig(props);
+        }
         String sqlStorageMode = checkSqlStorageMode(props);
         if (JSON.equals(sqlStorageMode)) {
             putSqlFileConfig(props);
@@ -647,6 +650,9 @@ public final class ConfigReader {
 
     private static void checkReplayConfig(Properties props) {
         putReplayConfig(props);
+        if (checkIsCompareResult(props)) {
+            putCompareResultConfig(props);
+        }
         String sqlStorageMode = checkSqlStorageMode(props);
         putTargetDbConfig(props);
         if (JSON.equals(sqlStorageMode)) {
@@ -684,6 +690,9 @@ public final class ConfigReader {
         CONFIG_MAP.put(TCPDUMP_FILE_DROP, matchBoolean(props.getProperty(TCPDUMP_FILE_DROP, "false")));
         CONFIG_MAP.put(PARSE_MAX_TIME, matchInt(props.getProperty(PARSE_MAX_TIME, "0")));
         CONFIG_MAP.put(PARSE_SELECT_RESULT, matchBoolean(props.getProperty(PARSE_SELECT_RESULT, "false")));
+    }
+
+    private static void putParseSelectConfig(Properties props) {
         CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
         CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
         CONFIG_MAP.put(RESULT_FILE_SIZE, matchNumber(props.getProperty(RESULT_FILE_SIZE, "10")));
@@ -785,6 +794,9 @@ public final class ConfigReader {
                 props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "true")));
         CONFIG_MAP.put(COMPARE_SELECT_RESULT, matchBoolean(
                 props.getProperty(COMPARE_SELECT_RESULT, "false")));
+    }
+
+    private static void putCompareResultConfig(Properties props) {
         CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
         CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(
                 props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
@@ -809,6 +821,16 @@ public final class ConfigReader {
             System.exit(-1);
         }
         return sqlStorageMode;
+    }
+
+    private static boolean checkIsParseResult(Properties props) {
+        String isParseResult = props.getProperty(PARSE_SELECT_RESULT, "false");
+        return Boolean.parseBoolean(isParseResult);
+    }
+
+    private static boolean checkIsCompareResult(Properties props) {
+        String isParseResult = props.getProperty(COMPARE_SELECT_RESULT, "false");
+        return Boolean.parseBoolean(isParseResult);
     }
 
     private static void checkResult() {
