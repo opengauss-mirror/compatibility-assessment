@@ -294,6 +294,10 @@ tcpdump.database.port=3306
 queue.size.limit=10000
 # packet.batch.siz: 解析时每次提交sql所处理的报文条数，int类型，默认值: 10000
 packet.batch.size=10000
+# tcpdump.file.drop: 是否每解析完一个tcpdump文件就将其删除，boolean类型，默认值: false
+tcpdump.file.drop=false
+# parse.max.time: 解析进程的总执行时间，从进程启动开始计算，为0表示进程一直持续直到收到结束标识，int类型，单位: 分钟，默认值: 0
+parse.max.time=0
 # sql.storage.mode: sql存储方式，可选json或db，选择json表示录制的sql存在json文件中，选择db表示录制的sql存在数据库中，String类型，默认值: json
 sql.storage.mode=json
 # 若选择sql存储方式为json，另需配置以下项
@@ -319,6 +323,14 @@ sql.database.password=******
 sql.table.name=sql_table
 # sql.table.drop: 存储sql的表名若与数据库中已有表名一致，是否删除已有的表，boolean类型，默认值: false
 sql.table.drop=false
+# parse.select.result: 是否解析select语句查询结果，该功能用于对比录制端和回放端的查询结果，boolean类型，默认值: false
+parse.select.result=false
+# select.result.path: select语句查询结果保存文件路径，String类型，无默认值
+select.result.path=/***/***/***
+# result.file.name: select语句查询结果保存文件名称，String类型，默认值: select-result
+result.file.name=select-result
+# result.file.size: select语句查询结果保存文件大小，int类型，默认值: 10，单位: MB
+result.file.size=10
 ~~~
 
 ### 回放端
@@ -353,6 +365,10 @@ sql.replay.draw.interval=1000
 sql.replay.session.white.list=[]
 # 回放session黑名单, 格式: 192.168.0.1 or 192.168.0.1:8888, session之间用';'分隔
 sql.replay.session.black.list=[192.168.0.229:60032]
+# replay.max.time: 回放进程的总执行时间，从进程启动开始计算，为0表示进程一直持续直到收到结束标识，int类型，单位: 分钟，默认值: 0
+replay.max.time=0
+# source.time.interval.replay:是否启用回放时间间隔和源端一致的功能，不启用则是连续快速回放模式，boolean类型，默认值: false
+source.time.interval.replay=false
 
 # 回放端数据库ip，String类型，无默认值
 sql.replay.database.ip=192.168.0.34
@@ -390,6 +406,34 @@ sql.database.password=******
 sql.table.name=sql_table
 # sql.table.drop: 存储sql的表名若与数据库中已有表名一致，是否删除已有的表，boolean类型，默认值: false
 sql.table.drop=false
+
+# compare.select.result: 是否将回放端和录制端的select查询结果对比，boolean类型，默认值: false
+compare.select.result=false
+# select.result.path: select语句查询结果保存文件路径，String类型，无默认值
+select.result.path=/***/***/***
+# result.file.name: select语句查询结果保存文件名称，String类型，默认值: select-result
+result.file.name=select-result
+~~~
+
+## 新特性
+### 流式回放功能
+录制、解析、回放三个进程可同时执行，实现边录制边解析边回放
+~~~
+注1：该流式处理功能不影响原有的录制、解析、回放三个进程顺序执行的结果，原有操作方式仍可使用
+注2：为了防止录制端进程异常终止导致解析端和回放端进程残留的问题，工具提供了参数parse.max.time和replay.max.time配置解析端和回放端的最大工作时长，达到该阈值则进程自动终止
+~~~
+
+### 回放结果对比
+将回放端的select语句查询结果与源端查询结果进行对比，并将对比结果写到data_diff.log日志文件里，该功能可通过参数控制是否开启
+~~~
+注1：开启对比功能则会将源端所有select语句查询结果保存到磁盘，因此开启该功能应预留足够的磁盘空间
+注2：由于该功能是将源端select语句的响应包直接解析，回放端是通过调jdbc将查询结果进行了转化，二进制类型blob、longblob、mediumblob、tinyblob、raw通过jdbc的转化，与直接解析响应包得到的数据格式不相同，因此这几种类型的数据对比结果与源端不一致，这是对比功能的局限性，实际数据库里存的值是一致的，对业务无影响
+~~~
+
+### 时间间隔一致
+回放端相邻sql的回放时间间隔与源端保持一致，该功能可通过参数控制是否开启
+~~~
+注1：源端和回放端执行sql耗时存在一定差异，为了避免相邻sql之间的数据依赖关系影响回放结果，在回放间隔基本一致的条件下，还需确保所有sql按顺序串行执行，因此两个相邻sql回放时间间隔跟源端可能存在差异，但差异是毫秒级别的，可以忽略，但在业务量较少的场景下，时间间隔可以达到一致
 ~~~
 
 ## 约束
@@ -420,6 +464,9 @@ sql.table.drop=false
 1. 只支持向openGauss数据库回放
 2. 只有通过tcpdump录制的sql支持并行回放
 3. Insert语句是慢SQL时，不打印执行计划
+
+### 新特性
+1. 在流式回放功能开启时，会影响结果对比、时间间隔一致功能，因此流式回放、结果对比、时间间隔一致三个功能应尽量单独使用
 
 ## FAQ
 1. MySQL协议解析
