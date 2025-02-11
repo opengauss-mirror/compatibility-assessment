@@ -17,7 +17,9 @@ package org.opengauss.tool.replay.operator;
 
 import com.alibaba.fastjson2.JSONObject;
 
+import org.opengauss.tool.Starter;
 import org.opengauss.tool.replay.model.ProcessModel;
+import org.opengauss.tool.utils.FailSqlFileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +47,8 @@ public class RecordOperator {
      * recordSqlCount: sqlCount and replay Count
      */
     public void recordSqlCount() {
-        createFile(PROCESS_FILE_NAME);
+        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), PROCESS_FILE_NAME);
+        createFile(filePath);
         executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleAtFixedRate(this::recordProcess, 0, RECORD_PERIOD, TimeUnit.SECONDS);
     }
@@ -59,8 +62,9 @@ public class RecordOperator {
     }
 
     private void recordProcess() {
+        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), PROCESS_FILE_NAME);
         JSONObject processData = generateProcessData();
-        write2File(processData, PROCESS_FILE_NAME);
+        write2File(processData, filePath);
     }
 
     private void createFile(String fileName) {
@@ -93,11 +97,12 @@ public class RecordOperator {
      * recordDuration: record duration of source and target
      */
     public void recordDuration() {
-        createFile(DURATION_FILE_NAME);
+        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), DURATION_FILE_NAME);
+        createFile(filePath);
         JSONObject jsonObject = new JSONObject();
         ProcessModel processModel = ProcessModel.getInstance();
         jsonObject.put("source", processModel.getMysqlSeries().getItems().toString());
         jsonObject.put("target", processModel.getOpgsSeries().getItems().toString());
-        write2File(jsonObject, DURATION_FILE_NAME);
+        write2File(jsonObject, filePath);
     }
 }
