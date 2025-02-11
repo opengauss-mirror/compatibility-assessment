@@ -106,6 +106,7 @@ public class SingleReplayThread extends ReplayThread {
     private void replay(SqlModel sqlModel) {
         Optional<Connection> replayConnOptional = ReplayConnectionFactory.getInstance().getConnection(
                 replayConfig.getTargetDbConfig(), sqlModel.getSchema(), replayConfig.getSchemaMap());
+        processModel.incrementReplayCount();
         if (!replayConnOptional.isPresent()) {
             processModel.incrementFailCount();
             String errorMessage = String.format("sql replay fail due to connection is null, please check sql.replay."
@@ -113,7 +114,6 @@ public class SingleReplayThread extends ReplayThread {
             replayLogOperator.printFailSqlLog(sqlModel, errorMessage);
         } else if ("quit".equals(sqlModel.getSql())) {
             processModel.incrementSuccessCount();
-            processModel.incrementReplayCount();
             String session = sqlModel.getSession();
             sessionSet.remove(session);
             closeThread(Collections.singleton(session));
@@ -139,9 +139,6 @@ public class SingleReplayThread extends ReplayThread {
                     LOCK.unlock();
                 }
             }
-        }
-        if (!"quit".equals(sqlModel.getSql())) {
-            processModel.incrementReplayCount();
         }
         if (processModel.getReplayCount() == processModel.getSqlCount()) {
             clearAllThread();
