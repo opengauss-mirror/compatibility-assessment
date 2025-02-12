@@ -122,7 +122,7 @@ public class ParseTask extends WorkTask {
             opengaussOperator.initStorage(config.getOpengaussConfig(), true, config.isDropPreviousSql());
         } else {
             fileOperator = new FileOperator(config.getFileConfig());
-            FileOperator.createPath(config.getFileConfig().getFilePath());
+            FileOperator.createPath(config.getFileConfig().getFilePath(), config.getFileConfig().getFileName());
         }
     }
 

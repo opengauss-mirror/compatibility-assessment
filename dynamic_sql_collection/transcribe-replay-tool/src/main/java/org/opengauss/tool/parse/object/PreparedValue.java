@@ -75,7 +75,11 @@ public class PreparedValue {
                 this.type = "timestamp";
                 break;
             case "fd":
+            case "fe":
                 this.type = "string";
+                break;
+            case "08":
+                this.type = "long";
                 break;
             default:
                 this.type = type;

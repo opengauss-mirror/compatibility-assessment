@@ -118,7 +118,7 @@ public class TranscribeTask extends WorkTask {
      */
     protected void initStorage() {
         if (config.isWriteToFile()) {
-            FileOperator.createPath(config.getFileConfig().getFilePath());
+            FileOperator.createPath(config.getFileConfig().getFilePath(), config.getFileConfig().getFileName());
             fileOperator = new FileOperator(config.getFileConfig());
         } else {
             opengaussOperator = new DatabaseOperator(config.getOpengaussConfig(), ConnectionFactory.OPENGAUSS);
