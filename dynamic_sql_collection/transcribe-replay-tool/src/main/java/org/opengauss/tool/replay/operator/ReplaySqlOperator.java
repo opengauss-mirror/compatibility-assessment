@@ -355,7 +355,8 @@ public class ReplaySqlOperator {
             while (rs.next()) {
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= cols; i++) {
-                    row.add(rs.getString(i));
+                    String str = rs.getString(i);
+                    row.add(str == null ? "null" : str);
                 }
                 data.add(row);
             }
@@ -389,7 +390,8 @@ public class ReplaySqlOperator {
             while (rs.next()) {
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= cols; i++) {
-                    row.add(rs.getString(i));
+                    String str = rs.getString(i);
+                    row.add(str == null ? "null" : str);
                 }
                 data.add(row);
             }
