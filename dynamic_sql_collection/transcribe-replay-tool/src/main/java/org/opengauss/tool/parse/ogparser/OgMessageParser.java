@@ -39,6 +39,7 @@ import java.util.Arrays;
 public class OgMessageParser extends ParseThread {
     private static final Logger LOGGER = LoggerFactory.getLogger(OgMessageParser.class);
     private static final String DEFAULT_STATEMENT_NAME = "00";
+    private static final String NULL_HEX = "ffffffff";
 
     private String database;
     private Map<String, SqlInfo> preparedSqlMap;
@@ -356,6 +357,10 @@ public class OgMessageParser extends ParseThread {
                 for (int i = 0; i < fieldCount; i++) {
                     int columnLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 4));
                     point = point + 4;
+                    if (columnLen == -1) {
+                        row.add(null);
+                        continue;
+                    }
                     String text = new String(data, point, columnLen, CHARSET);
                     row.add(text);
                     point = point + columnLen;
@@ -384,6 +389,9 @@ public class OgMessageParser extends ParseThread {
                 hex = "0" + hex;
             }
             hexString.append(hex);
+        }
+        if (hexString.toString().equals(NULL_HEX)) {
+            return -1;
         }
         return Integer.parseInt(hexString.toString(), 16);
     }

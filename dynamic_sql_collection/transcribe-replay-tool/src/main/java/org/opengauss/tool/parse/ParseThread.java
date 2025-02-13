@@ -56,6 +56,8 @@ public class ParseThread extends Thread {
      */
     protected static final Charset CHARSET = StandardCharsets.UTF_8;
 
+    private static final int FORMAT_NULL = 251;
+
     private static final int FORMAT_FC = 252;
 
     private static final int FORMAT_FD = 253;
@@ -359,6 +361,10 @@ public class ParseThread extends Thread {
                     int textLen;
                     int type = data[point] & 0xFF;
                     switch (type) {
+                        case FORMAT_NULL:
+                            textLen = -1;
+                            point = point + 1;
+                            break;
                         case FORMAT_FC:
                             textLen = hexToDecimal(Arrays.copyOfRange(data, point + 1, point + 3));
                             point = point + 3;
@@ -374,6 +380,10 @@ public class ParseThread extends Thread {
                         default:
                             textLen = hexToDecimal(Arrays.copyOfRange(data, point, point + 1));
                             point = point + 1;
+                    }
+                    if (textLen == -1) {
+                        row.add(null);
+                        continue;
                     }
                     String text = new String(data, point, textLen, CHARSET);
                     row.add(text);
