@@ -208,6 +208,7 @@ public class ParseThread extends Thread {
         }
         isParseFinished.set(true);
         LOGGER.debug("Packets from {} have been parsed completed.", sessionId);
+        packetQueue.clear();
         interrupt();
     }
 

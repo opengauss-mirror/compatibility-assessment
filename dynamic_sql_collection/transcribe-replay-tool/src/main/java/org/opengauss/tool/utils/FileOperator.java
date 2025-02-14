@@ -31,7 +31,9 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -190,15 +192,22 @@ public final class FileOperator {
      * Create path
      *
      * @param path String the file path
+     * @param fileName String the file name: sql file / pcap file
      */
-    public static void createPath(String path) {
+    public static void createPath(String path, String fileName) {
         File target = new File(path);
-        if (!target.exists()) {
+        if (target.exists()) {
+            Arrays.stream(Objects.requireNonNull(target.listFiles()))
+                .filter(file -> file.getName().startsWith(fileName)
+                    || file.getName().startsWith("session-mapping")
+                    || file.getName().equals("endFile"))
+                .forEach(File::delete);
+        } else {
             try {
                 Files.createDirectories(Paths.get(path));
             } catch (IOException e) {
-                LOGGER.error("IOException occurred while creating directory {}, error message is: {}.",
-                        path, e.getMessage());
+                LOGGER.error("IOException occurred while creating directory {}, error message is: {}.", path,
+                    e.getMessage());
             }
         }
     }

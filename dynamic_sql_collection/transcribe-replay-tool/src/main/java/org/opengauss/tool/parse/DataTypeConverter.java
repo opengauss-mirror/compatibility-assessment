@@ -39,6 +39,8 @@ public final class DataTypeConverter {
             put("06", DataTypeConverter::convertNullValue);
             put("0c", DataTypeConverter::convertTimestampValue);
             put("fd", DataTypeConverter::convertStringValue);
+            put("fe", DataTypeConverter::convertStringValue);
+            put("08", DataTypeConverter::convertLongLongValue);
         }
     };
 
@@ -128,8 +130,32 @@ public final class DataTypeConverter {
      * @return PreparedValue the preparedValue
      */
     public static PreparedValue convertStringValue(byte[] packet, int start) {
-        int valueLength = Integer.parseInt(CommonParser.parseByLittleEndian(packet, start, start + 1), 16);
-        String value = CommonParser.parseByteToString(packet, start + 1, start + 1 + valueLength);
-        return new PreparedValue(value, valueLength + 1);
+        int flag = packet[start] & 0xff;
+        int index = start;
+        int intLen;
+        int offset;
+        if (flag == 0xfc) {
+            intLen = 2;
+            offset = 3;
+            index++;
+        } else if (flag == 0xfd) {
+            intLen = 3;
+            offset = 4;
+            index++;
+        } else {
+            intLen = 1;
+            offset = 1;
+        }
+        int valueLength = Integer.parseInt(CommonParser.parseByLittleEndian(packet, index, index + intLen), 16);
+        String value = CommonParser.parseByteToString(packet, index + intLen, index + intLen + valueLength);
+        return new PreparedValue(value, valueLength + offset);
+    }
+
+    private static PreparedValue convertLongLongValue(byte[] packet, int start) {
+        PreparedValue preparedValue = new PreparedValue();
+        preparedValue.setValue(String.valueOf(Long.parseLong(CommonParser.parseByLittleEndian(packet, start,
+            start + 8), 16)));
+        preparedValue.setOffset(8);
+        return preparedValue;
     }
 }

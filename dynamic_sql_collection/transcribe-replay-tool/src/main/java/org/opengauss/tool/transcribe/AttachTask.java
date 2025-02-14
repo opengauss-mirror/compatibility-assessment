@@ -60,7 +60,7 @@ public class AttachTask extends TranscribeTask {
 
     @Override
     protected void initStorage() {
-        FileOperator.createPath(config.getFileConfig().getFilePath());
+        FileOperator.createPath(config.getFileConfig().getFilePath(), config.getFileConfig().getFileName());
         fileOperator = new FileOperator(config.getFileConfig());
     }
 }

@@ -210,6 +210,8 @@ sql.file.path=/***/***/***
 sql.file.name=sql-file
 # sql.file.size: attach工具采集到的单个sql文件大小限制，int类型，默认值: 10，单位: MB
 sql.file.size=10
+# file.count.limit: 网络文件或sql文件的个数限制，文件超出该限制时，停止录制，实际产生的文件个数可能会略大于该限制，默认值：100
+file.count.limit=100
 # max.cpu.threshold: 系统CPU使用率阈值，取值在0~1之间，当系统CPU使用率超过该值时，工具会停止录制，double类型，默认值: 0.85
 max.cpu.threshold=0.85
 # max.memory.threshold: 系统内存使用率阈值，取值在0~1之间，当系统内存使用率超过该值时，工具会停止录制，double类型，默认值: 0.85
@@ -378,9 +380,6 @@ sql.replay.database.name=sql_replay
 sql.replay.database.username=opengauss_test
 # 回放端数据库用户密码，String类型，无默认值
 sql.replay.database.password=******
-
-# 网络文件或sql文件的个数限制，文件超出该限制时，停止录制，实际产生的文件个数可能会略大于该限制，默认值：100
-file.count.limit=100
 
 # 若选择sql回放方式为json，另需配置以下项
 # sql.file.path: sql文件路径，String类型，默认值: 工具jar包所在路径下的parse-files/子目录
