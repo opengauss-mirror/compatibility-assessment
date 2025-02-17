@@ -39,6 +39,7 @@ public class RecordOperator {
     private static final Logger LOGGER = LoggerFactory.getLogger(RecordOperator.class);
     private static final String PROCESS_FILE_NAME = "process.json";
     private static final String DURATION_FILE_NAME = "duration.json";
+    private static final String BASE_PATH = FailSqlFileUtils.getJarPath(Starter.class) + File.separator + "%s";
     private static final int RECORD_PERIOD = 5;
 
     private ScheduledExecutorService executorService;
@@ -47,7 +48,7 @@ public class RecordOperator {
      * recordSqlCount: sqlCount and replay Count
      */
     public void recordSqlCount() {
-        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), PROCESS_FILE_NAME);
+        String filePath = String.format(BASE_PATH, PROCESS_FILE_NAME);
         createFile(filePath);
         executorService = Executors.newScheduledThreadPool(1);
         executorService.scheduleAtFixedRate(this::recordProcess, 0, RECORD_PERIOD, TimeUnit.SECONDS);
@@ -62,7 +63,7 @@ public class RecordOperator {
     }
 
     private void recordProcess() {
-        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), PROCESS_FILE_NAME);
+        String filePath = String.format(BASE_PATH, PROCESS_FILE_NAME);
         JSONObject processData = generateProcessData();
         write2File(processData, filePath);
     }
@@ -97,7 +98,7 @@ public class RecordOperator {
      * recordDuration: record duration of source and target
      */
     public void recordDuration() {
-        String filePath = String.format("%s/%s", FailSqlFileUtils.getJarPath(Starter.class), DURATION_FILE_NAME);
+        String filePath = String.format(BASE_PATH, DURATION_FILE_NAME);
         createFile(filePath);
         JSONObject jsonObject = new JSONObject();
         ProcessModel processModel = ProcessModel.getInstance();

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -31,13 +32,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SingleThreadModel {
     private static SingleThreadModel instance;
 
-
     private final AtomicInteger threadCount;
+    private final AtomicBoolean isClose;
     private final ConcurrentMap<String, Integer> sessionThreadMap;
     private final ConcurrentMap<Integer, SingleReplayThread> threadMap;
 
     private SingleThreadModel() {
         this.threadCount = new AtomicInteger(0);
+        this.isClose = new AtomicBoolean(false);
         this.sessionThreadMap = new ConcurrentHashMap<>();
         this.threadMap = new ConcurrentHashMap<>();
     }
@@ -134,6 +136,33 @@ public class SingleThreadModel {
     public void removeThread(String name) {
         int threadId = Integer.parseInt(name.split("-")[1]);
         threadMap.remove(threadId);
+    }
+
+    /**
+     * isClose
+     *
+     * @return is all thread close flag
+     */
+    public Boolean isClose() {
+        return isClose.get();
+    }
+
+    /**
+     * setClose
+     */
+    public void setClose() {
+        isClose.set(true);
+    }
+
+    /**
+     * clearAllThreads
+     */
+    public synchronized void clearAllThreads() {
+        for (SingleReplayThread thread : threadMap.values()) {
+            if (thread.isAlive()) {
+                thread.handleThreadData(thread);
+            }
+        }
     }
 }
 

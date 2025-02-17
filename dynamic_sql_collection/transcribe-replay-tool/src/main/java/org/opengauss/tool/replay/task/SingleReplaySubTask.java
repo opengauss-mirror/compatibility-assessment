@@ -24,6 +24,8 @@ import org.opengauss.tool.replay.operator.ReplaySqlOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
+
 /**
  * SingleReplaySubTask
  *
@@ -72,7 +74,7 @@ public class SingleReplaySubTask implements ReplaySubTask {
         }
         if (!singleThreadModel.getSessionThreadMap().containsKey(session)) {
             if (singleThreadModel.getThreadMap().size() < maximumPoolSize) {
-                int threadId = singleThreadModel.getThreadMap().size();
+                int threadId = findThreadId(singleThreadModel.getThreadMap().keySet(), maximumPoolSize);
                 SingleReplayThread thread = new SingleReplayThread(threadId, replayConfig);
                 thread.getSessionSet().add(session);
                 thread.start();
@@ -98,5 +100,14 @@ public class SingleReplaySubTask implements ReplaySubTask {
         int threadId = singleThreadModel.getSessionThreadMap().get(session);
         SingleReplayThread thread = singleThreadModel.getThreadMap().get(threadId);
         thread.addSqlModel(sqlModel);
+    }
+
+    private int findThreadId(Set<Integer> threadIdSet, int maximumPoolSize) {
+        for (int i = 0; i < maximumPoolSize; i++) {
+            if (!threadIdSet.contains(i)) {
+                return i;
+            }
+        }
+        return 0;
     }
 }
