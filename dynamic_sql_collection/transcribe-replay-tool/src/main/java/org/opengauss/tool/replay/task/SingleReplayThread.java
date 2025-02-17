@@ -17,6 +17,7 @@ package org.opengauss.tool.replay.task;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.factory.ReplayConnectionFactory;
@@ -67,7 +68,7 @@ public class SingleReplayThread extends ReplayThread {
     /**
      * init replay thread
      *
-     * @param threadId     threadId
+     * @param threadId threadId
      * @param replayConfig replayConfig
      */
     public SingleReplayThread(int threadId, ReplayConfig replayConfig) {
@@ -84,33 +85,35 @@ public class SingleReplayThread extends ReplayThread {
         LOGGER.info("after interrupt, thread:{}, threadCount:{}", this.getName(), singleThreadModel.getThreadCount());
     }
 
-
     @Override
     public void run() {
-        while (!isThreadStop.get()) {
+        while (!isThreadStop.get() && !singleThreadModel.isClose()) {
             try {
                 SqlModel sqlModel = sqlModelQueue.poll(POLL_TIMEOUT, TimeUnit.SECONDS);
                 if (sqlModel == null) {
-                    LOGGER.info("the sql queue has been empty for {}s, thread name :{}, session:{}", POLL_TIMEOUT,
+                    if (!singleThreadModel.isClose()) {
+                        LOGGER.info("the sql queue has been empty for {}s, thread name :{}, session:{}", POLL_TIMEOUT,
                             this.getName(), this.sessionSet);
-                    closeThread(sessionSet);
+                        singleThreadModel.setClose();
+                        singleThreadModel.clearAllThreads();
+                    }
                     break;
                 }
                 replay(sqlModel);
             } catch (InterruptedException e) {
-                LOGGER.info("poll thread has been interrupted, error message:{}", e.getMessage());
+                LOGGER.debug("poll thread has been interrupted, error message:{}", e.getMessage());
             }
         }
     }
 
     private void replay(SqlModel sqlModel) {
-        Optional<Connection> replayConnOptional = ReplayConnectionFactory.getInstance().getConnection(
-                replayConfig.getTargetDbConfig(), sqlModel.getSchema(), replayConfig.getSchemaMap());
+        Optional<Connection> replayConnOptional = ReplayConnectionFactory.getInstance()
+            .getConnection(replayConfig.getTargetDbConfig(), sqlModel.getSchema(), replayConfig.getSchemaMap());
         processModel.incrementReplayCount();
         if (!replayConnOptional.isPresent()) {
             processModel.incrementFailCount();
             String errorMessage = String.format("sql replay fail due to connection is null, please check sql.replay."
-                    + "database.schema.map of replay.properties, schema:%s", sqlModel.getSchema());
+                + "database.schema.map of replay.properties, schema:%s", sqlModel.getSchema());
             replayLogOperator.printFailSqlLog(sqlModel, errorMessage);
         } else if ("quit".equals(sqlModel.getSql())) {
             processModel.incrementSuccessCount();
@@ -126,7 +129,7 @@ public class SingleReplayThread extends ReplayThread {
                     Set<Integer> readySqlIdSet = READY_SQL_MAP.keySet();
                     int minReadyId = MIN_READY_SQL_ID.get();
                     if (currentEndTime != Long.MAX_VALUE && sqlModel.getStartTime() < currentEndTime
-                            || readySqlIdSet.size() == currentThreadCount && sqlModel.getId() == minReadyId) {
+                        || readySqlIdSet.size() == currentThreadCount && sqlModel.getId() == minReadyId) {
                         ExecuteResponse response = execute(sqlModel, currentEndTime, replayConnOptional.get());
                         handleResult(sqlModel, replayConfig, response);
                         break;
@@ -140,13 +143,14 @@ public class SingleReplayThread extends ReplayThread {
                 }
             }
         }
-        if (processModel.getReplayCount() == processModel.getSqlCount()) {
-            clearAllThread();
+        if (processModel.isReadFinish() && !singleThreadModel.isClose()
+            && processModel.getReplayCount() == processModel.getSqlCount()) {
+            singleThreadModel.setClose();
+            singleThreadModel.clearAllThreads();
         }
     }
 
-    private ExecuteResponse execute(SqlModel sqlModel, long currentEndTime,
-                                    Connection replayConn) {
+    private ExecuteResponse execute(SqlModel sqlModel, long currentEndTime, Connection replayConn) {
         long endTime = sqlModel.getEndTime();
         READY_SQL_MAP.remove(sqlModel.getId());
         MIN_READY_SQL_ID.set(READY_SQL_MAP.keySet().stream().sorted().findFirst().orElse(0));
@@ -158,13 +162,12 @@ public class SingleReplayThread extends ReplayThread {
             sourceTimeInterval(sqlModel);
         }
         ExecuteResponse response = new ExecuteResponse();
-        response = sqlModel.isPrepared() ? replaySqlOperator.executePrepareSql(replayConn, sqlModel)
-                : replaySqlOperator.executeStmtSql(replayConn, sqlModel);
+        response = sqlModel.isPrepared()
+            ? replaySqlOperator.executePrepareSql(replayConn, sqlModel)
+            : replaySqlOperator.executeStmtSql(replayConn, sqlModel);
         EXECUTE_SQL_MAP.remove(sqlModel.getId());
         if (CURRENT_SQL_END_TIME.get() == endTime) {
-            CURRENT_SQL_END_TIME.set(EXECUTE_SQL_MAP.values().stream().sorted()
-                    .findFirst()
-                    .orElse(Long.MAX_VALUE));
+            CURRENT_SQL_END_TIME.set(EXECUTE_SQL_MAP.values().stream().sorted().findFirst().orElse(Long.MAX_VALUE));
         }
         return response;
     }
@@ -178,7 +181,7 @@ public class SingleReplayThread extends ReplayThread {
                     sleep(separation - diffTime);
                 } catch (InterruptedException e) {
                     LOGGER.error("InterruptedException occurred while reply sql, error message is: {}.",
-                            e.getMessage());
+                        e.getMessage());
                 }
             }
         }
@@ -202,28 +205,25 @@ public class SingleReplayThread extends ReplayThread {
         }
     }
 
-    private synchronized void handleThreadData(SingleReplayThread thread) {
+    /**
+     * handleThreadData
+     *
+     * @param thread thread
+     */
+    public synchronized void handleThreadData(SingleReplayThread thread) {
         processModel.addSuccessCount(successCount);
         processModel.addFailCount(failCount);
         processModel.addSlowCount(slowCount);
         updateSlowSqlQueue(thread.getSlowSqlQueue());
         collectDuration(thread);
         LOGGER.info("thread will be stop, name: {}", thread.getName());
-        close();
+        thread.close();
         singleThreadModel.removeThread(getName());
         singleThreadModel.removeSession(sessionSet);
         singleThreadModel.decrementThreadCount();
         if (processModel.isReadFinish() && processModel.getReplayCount() == processModel.getSqlCount()
-                && singleThreadModel.getThreadCount() == 0) {
+            && singleThreadModel.getThreadCount() == 0) {
             processModel.setReplayFinish();
-        }
-    }
-
-    private synchronized void clearAllThread() {
-        for (SingleReplayThread thread : singleThreadModel.getThreadMap().values()) {
-            if (thread.isAlive()) {
-                handleThreadData(thread);
-            }
         }
     }
 }
