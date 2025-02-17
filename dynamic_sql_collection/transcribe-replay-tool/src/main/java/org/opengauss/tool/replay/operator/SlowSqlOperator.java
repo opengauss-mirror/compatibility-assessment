@@ -16,6 +16,7 @@
 package org.opengauss.tool.replay.operator;
 
 import lombok.NoArgsConstructor;
+
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.factory.ReplayConnectionFactory;
@@ -40,6 +41,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * SlowSqlOperator
@@ -49,6 +52,8 @@ import java.util.Optional;
 @NoArgsConstructor
 public class SlowSqlOperator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReplaySqlOperator.class);
+    private static final String PARAM_REGEX = "'[^']*'|\\b\\d+\\.\\d+\\b|\\b\\d+\\b";
+    private static final Pattern PARAM_PATTERN = Pattern.compile(PARAM_REGEX);
 
     private final ReplayLogOperator replayLogOperator = new ReplayLogOperator();
     private final LrukCache<Integer, SlowSqlModel> cache = new LrukCache<>(500, 5);
@@ -70,8 +75,7 @@ public class SlowSqlOperator {
     public void createSlowTable() {
         String dropTableSql = "drop table if exists slow_table";
         String createTableSql = "create table slow_table(uniqueCode bigint primary key, "
-                + "sql text, mysql_duration bigint, opgs_duration bigint, explain text, count bigint)";
-
+            + "sql text, mysql_duration bigint, opgs_duration bigint, explain text, count bigint)";
         Optional<Connection> connectionOptional = getSlowDbConnection();
         connectionOptional.ifPresent(connection -> {
             Statement statement = null;
@@ -124,7 +128,7 @@ public class SlowSqlOperator {
     }
 
     private void wirte2Csv(int columnCount, BufferedWriter fileWriter, ResultSetMetaData metaData, ResultSet rs)
-            throws IOException, SQLException {
+        throws IOException, SQLException {
         for (int i = 1; i <= columnCount; i++) {
             fileWriter.write(metaData.getColumnName(i));
             if (i < columnCount) {
@@ -132,7 +136,6 @@ public class SlowSqlOperator {
             }
         }
         fileWriter.newLine();
-
         while (rs.next()) {
             for (int i = 1; i <= columnCount; i++) {
                 String value = formatValue(rs.getString(i));
@@ -168,10 +171,9 @@ public class SlowSqlOperator {
                 slowSqlModel = insertNewSlowSql(uniqueCode, sqlModel, duration, explain, statement);
             } else {
                 oldSlowSqlModel = slowSqlModelOptional.isPresent()
-                        ? slowSqlModelOptional.get()
-                        : getOldSlowSqlModel(statement, uniqueCode);
-                slowSqlModel = updateExistingSlowSql(oldSlowSqlModel, uniqueCode, sqlModel, duration,
-                        statement);
+                    ? slowSqlModelOptional.get()
+                    : getOldSlowSqlModel(statement, uniqueCode);
+                slowSqlModel = updateExistingSlowSql(oldSlowSqlModel, uniqueCode, sqlModel, duration, statement);
             }
             cache.put(uniqueCode, slowSqlModel);
         } catch (SQLException e) {
@@ -182,8 +184,8 @@ public class SlowSqlOperator {
     }
 
     private Optional<Connection> getSlowDbConnection() {
-        Optional<Connection> connectionOptional = ReplayConnectionFactory.getInstance().getConnection(
-                replayConfig.getTargetDbConfig(), ConfigReader.SLOW_DB, replayConfig.getSchemaMap());
+        Optional<Connection> connectionOptional = ReplayConnectionFactory.getInstance()
+            .getConnection(replayConfig.getTargetDbConfig(), ConfigReader.SLOW_DB, replayConfig.getSchemaMap());
         if (!connectionOptional.isPresent()) {
             LOGGER.error("Connection is not exist, please check slow_db schema");
         }
@@ -196,9 +198,33 @@ public class SlowSqlOperator {
 
     private String normalizeSql(String sql) {
         String tempSql = sql;
-        tempSql = tempSql.replaceAll("'[^']*", "?");
-        tempSql = tempSql.replaceAll("\\b\\d+\\b", "?");
-        tempSql = tempSql.replaceAll("\\bNULL\\b", "?");
+        if (tempSql == null || tempSql.trim().isEmpty()) {
+            return tempSql;
+        }
+        tempSql = tempSql.replaceAll("\\s+", " ").trim();
+        tempSql = tempSql.toUpperCase(Locale.ROOT);
+        tempSql = parameterizeSql(tempSql);
+        tempSql = removeComments(tempSql);
+        return tempSql;
+    }
+
+    private String parameterizeSql(String sql) {
+        Matcher matcher = PARAM_PATTERN.matcher(sql);
+        StringBuilder result = new StringBuilder();
+        int lastIndex = 0;
+        while (matcher.find()) {
+            result.append(sql, lastIndex, matcher.start());
+            result.append("?");
+            lastIndex = matcher.end();
+        }
+        result.append(sql.substring(lastIndex));
+        return result.toString();
+    }
+
+    private String removeComments(String sql) {
+        String tempSql = sql;
+        tempSql = tempSql.replaceAll("--.*", "");
+        tempSql = tempSql.replaceAll("/\\*.*?\\*/", "");
         return tempSql;
     }
 
@@ -222,27 +248,26 @@ public class SlowSqlOperator {
     }
 
     private boolean isSlowSqlInDb(Statement statement, int uniqueCode) throws SQLException {
-        ResultSet rs = statement.executeQuery(String.format(Locale.ROOT,
-                "select * from slow_table where uniqueCode=%d", uniqueCode));
+        ResultSet rs = statement.executeQuery(
+            String.format(Locale.ROOT, "select * from slow_table where uniqueCode=%d", uniqueCode));
         return rs.next();
     }
 
     private SlowSqlModel insertNewSlowSql(int uniqueCode, SqlModel sqlModel, long duration, String explain,
-                                    Statement statement) throws SQLException {
+        Statement statement) throws SQLException {
         SlowSqlModel slowSqlModel = new SlowSqlModel();
         slowSqlModel.setMysqlDuration(sqlModel.getMysqlDuration());
         slowSqlModel.setOpgsDuration(duration);
         slowSqlModel.setCount(1);
         statement.execute(String.format(Locale.ROOT, "insert into slow_table (uniqueCode, sql, mysql_duration, "
                 + "opgs_duration, explain, count) values (%d, '%s', %d, %d, E'%s', 1)", uniqueCode,
-                getNormalizeSql(sqlModel), slowSqlModel.getMysqlDuration(), duration,
-                explain.replaceAll("'", "\\\\'")));
+            getNormalizeSql(sqlModel), slowSqlModel.getMysqlDuration(), duration, explain.replaceAll("'", "\\\\'")));
         replayLogOperator.printSlowSqlLog(sqlModel, duration, explain);
         return slowSqlModel;
     }
 
     private SlowSqlModel updateExistingSlowSql(SlowSqlModel oldSlowSqlModel, int uniqueCode, SqlModel sqlModel,
-                                        long duration, Statement statement) throws SQLException {
+        long duration, Statement statement) throws SQLException {
         long mysqlDuration = oldSlowSqlModel.getMysqlDuration();
         long opgsDuration = oldSlowSqlModel.getOpgsDuration();
         long count = oldSlowSqlModel.getCount();
@@ -253,14 +278,14 @@ public class SlowSqlOperator {
         slowSqlModel.setOpgsDuration(avgOpgsDuration);
         slowSqlModel.setCount(count + 1);
         statement.executeUpdate(String.format(Locale.ROOT,
-                "update slow_table set mysql_duration=%d, opgs_duration=%d,  count=count+1 where uniqueCode=%d",
-                avgMysqlDuration, avgOpgsDuration, uniqueCode));
+            "update slow_table set mysql_duration=%d, opgs_duration=%d,  count=count+1 where uniqueCode=%d",
+            avgMysqlDuration, avgOpgsDuration, uniqueCode));
         return slowSqlModel;
     }
 
     private SlowSqlModel getOldSlowSqlModel(Statement statement, int uniqueCode) throws SQLException {
-        ResultSet rs = statement.executeQuery(String.format(Locale.ROOT,
-                "select * from slow_table where uniqueCode=%d", uniqueCode));
+        ResultSet rs = statement.executeQuery(
+            String.format(Locale.ROOT, "select * from slow_table where uniqueCode=%d", uniqueCode));
         SlowSqlModel slowSqlModel = new SlowSqlModel();
         if (rs.next()) {
             slowSqlModel.setMysqlDuration(rs.getLong("mysql_duration"));
