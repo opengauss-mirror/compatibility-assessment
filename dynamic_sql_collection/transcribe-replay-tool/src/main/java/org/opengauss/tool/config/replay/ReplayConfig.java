@@ -85,7 +85,7 @@ public class ReplayConfig {
         this.schemaMap = getSchemaMapping(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_SCHEMA_MAP));
         this.replayMaxTime = Integer.parseInt(props.getProperty(ConfigReader.REPLAY_MAX_TIME, "0"));
         this.isSourceTimeInterval = Boolean.parseBoolean(
-                props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "true"));
+                props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "false"));
         this.isRecordProcess = Boolean.parseBoolean(
             props.getProperty(ConfigReader.SQL_REPLAY_RECORD_PROCESS, "true"));
         this.isCompareResult = Boolean.parseBoolean(props.getProperty(ConfigReader.COMPARE_SELECT_RESULT, "false"));
