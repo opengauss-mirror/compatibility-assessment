@@ -796,7 +796,7 @@ public final class ConfigReader {
                 props.getProperty(SQL_REPLAY_SESSION_BLACK_LIST, "[]")));
         CONFIG_MAP.put(REPLAY_MAX_TIME, matchInt(props.getProperty(REPLAY_MAX_TIME, "0")));
         CONFIG_MAP.put(SOURCE_TIME_INTERVAL_REPLAY, matchBoolean(
-                props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "true")));
+                props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "false")));
         CONFIG_MAP.put(COMPARE_SELECT_RESULT, matchBoolean(
                 props.getProperty(COMPARE_SELECT_RESULT, "false")));
     }
