@@ -104,7 +104,9 @@ public class SqlModel {
      */
     public SqlModel(JSONObject jsonObject) {
         this.id = jsonObject.getInt("id");
-        this.packetId = jsonObject.getLong("packetId");
+        if (jsonObject.has("packetId")) {
+            this.packetId = jsonObject.getLong("packetId");
+        }
         this.isQuery = jsonObject.getBoolean("isQuery");
         this.isPrepared = jsonObject.getBoolean("isPrepared");
         this.session = jsonObject.getString("session");
