@@ -124,10 +124,11 @@ public final class FileUtils {
      * isFinished
      *
      * @param fileCatalogue file catalogue
+     * @param fileName finish fileName
      * @return boolean
      */
-    public static boolean isFinished(String fileCatalogue) {
-        String filePath = fileCatalogue + File.separator + "endFile";
+    public static boolean isFinished(String fileCatalogue, String fileName) {
+        String filePath = fileCatalogue + File.separator + fileName;
         File file = new File(filePath);
         if (file.exists()) {
             return true;

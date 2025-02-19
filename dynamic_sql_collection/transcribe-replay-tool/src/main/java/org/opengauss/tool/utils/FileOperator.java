@@ -177,7 +177,7 @@ public final class FileOperator {
      * send finished flag
      */
     public void sendFinishedFlag() {
-        String endFilePath = config.getFilePath() + File.separator + "endFile";
+        String endFilePath = config.getFilePath() + File.separator + "parseEndFile";
         File endFile = new File(endFilePath);
         try {
             if (!endFile.exists()) {
@@ -200,7 +200,7 @@ public final class FileOperator {
             Arrays.stream(Objects.requireNonNull(target.listFiles()))
                 .filter(file -> file.getName().startsWith(fileName)
                     || file.getName().startsWith("session-mapping")
-                    || file.getName().equals("endFile"))
+                    || file.getName().equals("parseEndFile"))
                 .forEach(File::delete);
         } else {
             try {

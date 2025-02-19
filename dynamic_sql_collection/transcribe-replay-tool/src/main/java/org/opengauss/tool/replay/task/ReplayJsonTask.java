@@ -90,7 +90,7 @@ public class ReplayJsonTask extends ReplayMainTask {
         long startTimeMillis = System.currentTimeMillis();
         while (true) {
             int fileCount = FileUtils.getFileCount(replayConfig);
-            if (fileCount == 0 && !FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+            if (fileCount == 0 && !FileUtils.isFinished(replayConfig.getFileCatalogue(), "parseEndFile")) {
                 long replayTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
                 if (replayConfig.getReplayMaxTime() > 0 && replayTime >= replayConfig.getReplayMaxTime()) {
                     ProcessModel.getInstance().setReplayFinish();
@@ -100,7 +100,7 @@ public class ReplayJsonTask extends ReplayMainTask {
                 sleep(1000);
                 continue;
             }
-            if (FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+            if (FileUtils.isFinished(replayConfig.getFileCatalogue(), "parseEndFile")) {
                 pushQueue(fileCount, point);
                 if (fileCount == 0 || sqlModelListCount == 0) {
                     ProcessModel.getInstance().setReplayFinish();
@@ -112,7 +112,8 @@ public class ReplayJsonTask extends ReplayMainTask {
             pushQueue(fileCount - 1, point);
             point = fileCount - 1;
             int currentFileCount = FileUtils.getFileCount(replayConfig);
-            if (currentFileCount == fileCount && !FileUtils.isFinished(replayConfig.getFileCatalogue())) {
+            if (currentFileCount == fileCount
+                    && !FileUtils.isFinished(replayConfig.getFileCatalogue(), "parseEndFile")) {
                 long replayTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
                 if (replayConfig.getReplayMaxTime() > 0 && replayTime >= replayConfig.getReplayMaxTime()) {
                     pushQueue(fileCount, point);
