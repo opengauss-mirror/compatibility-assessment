@@ -64,7 +64,7 @@ public class FailSqlFileUtils {
             String jarPath = getJarPath(Starter.class);
             String failPath = jarPath + "/" + FAIL_SQL_NAME;
             failSqlFilePath = String.format(failPath, failSqlFileNumbers);
-            LOGGER.info("Generate a new failSql file.");
+            LOGGER.debug("Generate a new failSql file.");
         }
     }
 

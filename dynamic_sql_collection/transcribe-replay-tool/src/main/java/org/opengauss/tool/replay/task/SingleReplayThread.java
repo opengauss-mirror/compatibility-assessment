@@ -94,8 +94,7 @@ public class SingleReplayThread extends ReplayThread {
                     if (!singleThreadModel.isClose()) {
                         LOGGER.info("the sql queue has been empty for {}s, thread name :{}, session:{}", POLL_TIMEOUT,
                             this.getName(), this.sessionSet);
-                        singleThreadModel.setClose();
-                        singleThreadModel.clearAllThreads();
+                        closeThread(sessionSet);
                     }
                     break;
                 }
@@ -109,17 +108,18 @@ public class SingleReplayThread extends ReplayThread {
     private void replay(SqlModel sqlModel) {
         Optional<Connection> replayConnOptional = ReplayConnectionFactory.getInstance()
             .getConnection(replayConfig.getTargetDbConfig(), sqlModel.getSchema(), replayConfig.getSchemaMap());
-        processModel.incrementReplayCount();
         if (!replayConnOptional.isPresent()) {
             processModel.incrementFailCount();
             String errorMessage = String.format("sql replay fail due to connection is null, please check sql.replay."
                 + "database.schema.map of replay.properties, schema:%s", sqlModel.getSchema());
             replayLogOperator.printFailSqlLog(sqlModel, errorMessage);
+            processModel.incrementReplayCount();
         } else if ("quit".equals(sqlModel.getSql())) {
             processModel.incrementSuccessCount();
             String session = sqlModel.getSession();
             sessionSet.remove(session);
             closeThread(Collections.singleton(session));
+            processModel.incrementReplayCount();
         } else {
             while (true) {
                 try {
@@ -142,6 +142,7 @@ public class SingleReplayThread extends ReplayThread {
                     LOCK.unlock();
                 }
             }
+            processModel.incrementReplayCount();
         }
         if (processModel.isReadFinish() && !singleThreadModel.isClose()
             && processModel.getReplayCount() == processModel.getSqlCount()) {

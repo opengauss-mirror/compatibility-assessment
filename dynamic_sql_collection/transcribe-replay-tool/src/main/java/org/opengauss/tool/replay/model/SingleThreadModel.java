@@ -17,6 +17,7 @@ package org.opengauss.tool.replay.model;
 
 import org.opengauss.tool.replay.task.SingleReplayThread;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -158,7 +159,8 @@ public class SingleThreadModel {
      * clearAllThreads
      */
     public synchronized void clearAllThreads() {
-        for (SingleReplayThread thread : threadMap.values()) {
+        Collection<SingleReplayThread> threads = threadMap.values();
+        for (SingleReplayThread thread : threads) {
             if (thread.isAlive()) {
                 thread.handleThreadData(thread);
             }
