@@ -143,7 +143,7 @@ public class ParseTask extends WorkTask {
         int point = 0;
         while (true) {
             List<File> files = getValidPacketFiles(dir);
-            if (files.isEmpty() && !FileUtils.isFinished(config.getPacketFilePath())) {
+            if (files.isEmpty() && !FileUtils.isFinished(config.getPacketFilePath(), "endFile")) {
                 long readTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
                 if (config.getParseMaxTime() > 0 && readTime >= config.getParseMaxTime()) {
                     break;
@@ -152,7 +152,7 @@ public class ParseTask extends WorkTask {
                 continue;
             }
 
-            if (FileUtils.isFinished(config.getPacketFilePath())) {
+            if (FileUtils.isFinished(config.getPacketFilePath(), "endFile")) {
                 if (config.isDropTcpdumpFile()) {
                     parseAndDeleteFile(files, files.size());
                 } else {
@@ -168,7 +168,8 @@ public class ParseTask extends WorkTask {
                 point = files.size() - 1;
             }
             int currentFileCount = getValidPacketFiles(dir).size();
-            if (currentFileCount == files.size() && !FileUtils.isFinished(config.getPacketFilePath())) {
+            if (currentFileCount == files.size()
+                    && !FileUtils.isFinished(config.getPacketFilePath(), "endFile")) {
                 long readTime = (System.currentTimeMillis() - startTimeMillis) / 60000;
                 if (config.getParseMaxTime() > 0 && readTime >= config.getParseMaxTime()) {
                     break;
