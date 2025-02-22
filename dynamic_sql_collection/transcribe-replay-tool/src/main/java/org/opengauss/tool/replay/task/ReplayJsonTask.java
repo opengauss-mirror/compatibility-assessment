@@ -19,6 +19,7 @@ import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.model.ProcessModel;
 import org.opengauss.tool.replay.model.SqlModel;
 import org.opengauss.tool.utils.FileUtils;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +61,7 @@ public class ReplayJsonTask extends ReplayMainTask {
 
     @Override
     public void replay() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         try {
             Thread parseThread = new Thread(this::parseFile);
             parseThread.setUncaughtExceptionHandler((t, e) -> LOGGER.error("An uncaught exception occurred in "

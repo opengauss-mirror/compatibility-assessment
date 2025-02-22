@@ -27,6 +27,7 @@ import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
 import org.opengauss.tool.utils.FileOperator;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -221,6 +222,7 @@ public class TranscribeTask extends WorkTask {
      * Arrange files
      */
     protected void arrangeFiles() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         File dir = new File(config.getFileConfig().getFilePath());
         List<File> files;
         while (true) {

@@ -22,6 +22,7 @@ import org.opengauss.tool.replay.model.ExecuteResponse;
 import org.opengauss.tool.replay.model.MultipleThreadModel;
 import org.opengauss.tool.replay.model.SqlModel;
 import org.opengauss.tool.replay.operator.ReplaySqlOperator;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,7 @@ public class MultiReplayThread extends ReplayThread {
 
     @Override
     public void run() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         while (!isThreadStop.get()) {
             try {
                 SqlModel sqlModel = sqlModelQueue.poll(POLL_TIMEOUT, TimeUnit.SECONDS);

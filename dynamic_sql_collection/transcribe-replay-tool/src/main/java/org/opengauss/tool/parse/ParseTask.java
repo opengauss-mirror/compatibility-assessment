@@ -30,6 +30,7 @@ import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.DatabaseOperator;
 import org.opengauss.tool.utils.FileOperator;
 import org.opengauss.tool.utils.FileUtils;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -137,6 +138,7 @@ public class ParseTask extends WorkTask {
     }
 
     private void readPcapFile() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         long startTimeMillis = System.currentTimeMillis();
         File dir = new File(config.getPacketFilePath());
         startTime = LocalDateTime.now();
@@ -255,6 +257,7 @@ public class ParseTask extends WorkTask {
     }
 
     private void distributeData() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         OriginPacket originPacket;
         byte[] packet;
         int headerLength;
@@ -362,6 +365,7 @@ public class ParseTask extends WorkTask {
     }
 
     private void mergeSql() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         long flag = 0L;
         List<SqlInfo> sqlList = new ArrayList<>();
         BlockingQueue<ParseThread> parseThreadQueue = new LinkedBlockingQueue<>();
@@ -409,6 +413,7 @@ public class ParseTask extends WorkTask {
     }
 
     private void saveSelectResult() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         String resultFilePath = config.getResultFileConfig().getSelectResultPath() + File.separator
                 + config.getResultFileConfig().getResultFileName() + "-" + fileId + ".json";
         File resultFile = new File(resultFilePath);
