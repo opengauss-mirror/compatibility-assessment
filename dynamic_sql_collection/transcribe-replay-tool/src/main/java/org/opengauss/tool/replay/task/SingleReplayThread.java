@@ -118,8 +118,8 @@ public class SingleReplayThread extends ReplayThread {
             processModel.incrementSuccessCount();
             String session = sqlModel.getSession();
             sessionSet.remove(session);
-            closeThread(Collections.singleton(session));
             processModel.incrementReplayCount();
+            closeThread(Collections.singleton(session));
         } else {
             while (true) {
                 try {
