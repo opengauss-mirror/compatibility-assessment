@@ -24,6 +24,7 @@ import org.opengauss.tool.parse.object.ProtocolConstant;
 import org.opengauss.tool.parse.object.SqlInfo;
 import org.opengauss.tool.parse.object.SelectResult;
 import org.opengauss.tool.utils.CommonParser;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,6 +145,7 @@ public class ParseThread extends Thread {
 
     @Override
     public void run() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         List<PacketData> packetDataList = new ArrayList<>();
         PacketData mergedPacket;
         while (true) {

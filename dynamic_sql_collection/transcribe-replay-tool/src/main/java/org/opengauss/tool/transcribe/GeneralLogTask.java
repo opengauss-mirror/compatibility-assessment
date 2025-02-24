@@ -19,6 +19,7 @@ import org.opengauss.tool.config.transcribe.TranscribeConfig;
 import org.opengauss.tool.parse.object.SqlInfo;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +73,7 @@ public class GeneralLogTask extends TranscribeTask {
     }
 
     private void querySql() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         startTime = LocalDateTime.now();
         mysqlOperator.refreshConnection();
         PreparedStatement ps;

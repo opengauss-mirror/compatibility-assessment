@@ -20,6 +20,7 @@ import org.opengauss.tool.replay.model.ProcessModel;
 import org.opengauss.tool.replay.model.SqlModel;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
+import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,7 @@ public class ReplayDbTask extends ReplayMainTask {
 
     @Override
     public void replay() {
+        Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         try {
             Thread readThread = new Thread(this::readSql);
             readThread.setUncaughtExceptionHandler((t, e) -> LOGGER.error("An uncaught exception occurred in readThread"
