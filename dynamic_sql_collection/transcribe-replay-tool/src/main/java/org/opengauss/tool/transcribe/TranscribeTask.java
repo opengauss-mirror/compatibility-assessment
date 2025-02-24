@@ -27,6 +27,7 @@ import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
 import org.opengauss.tool.utils.FileOperator;
+import org.opengauss.tool.utils.FileUtils;
 import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,10 @@ public class TranscribeTask extends WorkTask {
     private static final String PCAP_SUFFIX = ".pcap";
     private static final int SECOND_OF_MINUTE = 60;
     /**
+     * Process file path
+     */
+    protected static final String PROCESS_FILE_NAME = "parse-process.txt";
+    /**
      * Time formatter
      */
     protected static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
@@ -90,6 +95,11 @@ public class TranscribeTask extends WorkTask {
      * Start time
      */
     protected LocalDateTime startTime;
+
+    /**
+     * Process file path
+     */
+    protected String processPath;
     private Map<String, String> parameterMap;
     private CommandProcess process;
     private Thread tcpdump;
@@ -98,6 +108,7 @@ public class TranscribeTask extends WorkTask {
     private long timer;
     private int retryCount;
     private int fileCount;
+    private String endFlag;
 
     /**
      * Constructor
@@ -106,6 +117,7 @@ public class TranscribeTask extends WorkTask {
      */
     public TranscribeTask(TranscribeConfig config) {
         this.config = config;
+        endFlag = ConfigReader.ATTACH.equals(config.getTranscribeMode()) ? "parseEndFile" : "endFile";
         this.threadPool = new ThreadPoolExecutor(1, 1, 100, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(1));
         this.parameterMap = new HashMap<>();
@@ -118,6 +130,8 @@ public class TranscribeTask extends WorkTask {
      * Initialize storage
      */
     protected void initStorage() {
+        this.processPath = FileUtils.getJarPath() + File.separator + PROCESS_FILE_NAME;
+        FileUtils.createFile(processPath);
         if (config.isWriteToFile()) {
             FileOperator.createPath(config.getFileConfig().getFilePath(), config.getFileConfig().getFileName());
             fileOperator = new FileOperator(config.getFileConfig());
@@ -244,7 +258,7 @@ public class TranscribeTask extends WorkTask {
     }
 
     private void sendFinishedFlag(boolean shouldSend) {
-        String filePath = config.getFileConfig().getFilePath() + File.separator + "endFile";
+        String filePath = config.getFileConfig().getFilePath() + File.separator + endFlag;
         File endFile = new File(filePath);
         try {
             if (!endFile.exists()) {

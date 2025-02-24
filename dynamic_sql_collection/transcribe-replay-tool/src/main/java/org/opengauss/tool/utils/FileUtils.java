@@ -18,6 +18,7 @@ package org.opengauss.tool.utils;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.opengauss.tool.Starter;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.model.SqlModel;
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,7 @@ import java.util.List;
  */
 public final class FileUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
+    private static final String FILE_PREFIX = "file:";
     private static final int CHUNK_SIZE = 500;
 
     /**
@@ -134,5 +137,50 @@ public final class FileUtils {
             return true;
         }
         return false;
+    }
+
+    /**
+     * getJarPath
+     *
+     * @return String
+     */
+    public static String getJarPath() {
+        String decodedPath = Starter.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        if (decodedPath.startsWith(FILE_PREFIX)) {
+            decodedPath = decodedPath.substring(FILE_PREFIX.length()); // Remove "file:" prefix
+        }
+        if (decodedPath.contains("!")) {
+            decodedPath = decodedPath.substring(0, decodedPath.indexOf("!")); // Remove everything after "!"
+        }
+        return new File(decodedPath).getParentFile().getPath();
+    }
+
+    /**
+     * Create new file according to file full name
+     *
+     * @param fileName String the file full name
+     */
+    public static void createFile(String fileName) {
+        File file = new File(fileName);
+        try {
+            file.createNewFile();
+            LOGGER.info("file {} has been created successfully.", fileName);
+        } catch (IOException ex) {
+            LOGGER.error("create file {} failed, error message:{}.", fileName, ex.getMessage());
+        }
+    }
+
+    /**
+     * Write information to file
+     *
+     * @param info String the information
+     * @param fileName String the file full name
+     */
+    public static void write2File(String info, String fileName) {
+        try (FileWriter writer = new FileWriter(fileName)) {
+            writer.write(info);
+        } catch (IOException ex) {
+            LOGGER.error("write file {} failed, error message:{}.", fileName, ex.getMessage());
+        }
     }
 }

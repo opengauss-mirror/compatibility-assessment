@@ -17,6 +17,9 @@ package org.opengauss.tool.transcribe;
 
 import org.opengauss.tool.config.transcribe.TranscribeConfig;
 import org.opengauss.tool.utils.FileOperator;
+import org.opengauss.tool.utils.FileUtils;
+
+import java.io.File;
 
 /**
  * Description: Command process
@@ -60,6 +63,8 @@ public class AttachTask extends TranscribeTask {
 
     @Override
     protected void initStorage() {
+        this.processPath = FileUtils.getJarPath() + File.separator + PROCESS_FILE_NAME;
+        FileUtils.createFile(processPath);
         FileOperator.createPath(config.getFileConfig().getFilePath(), config.getFileConfig().getFileName());
         fileOperator = new FileOperator(config.getFileConfig());
     }

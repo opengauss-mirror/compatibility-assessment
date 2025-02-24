@@ -17,13 +17,11 @@ package org.opengauss.tool.utils;
 
 import com.alibaba.fastjson.JSON;
 
-import org.opengauss.tool.Starter;
 import org.opengauss.tool.replay.model.FailSqlModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -61,7 +59,7 @@ public class FailSqlFileUtils {
     private static void generateFailSqlFilePath() {
         if (failSqlLogNumbers / FAIL_SQL_FILE_SIZE + 1 > failSqlFileNumbers) {
             failSqlFileNumbers = failSqlLogNumbers / FAIL_SQL_FILE_SIZE + 1;
-            String jarPath = getJarPath(Starter.class);
+            String jarPath = FileUtils.getJarPath();
             String failPath = jarPath + "/" + FAIL_SQL_NAME;
             failSqlFilePath = String.format(failPath, failSqlFileNumbers);
             LOGGER.debug("Generate a new failSql file.");
@@ -92,22 +90,5 @@ public class FailSqlFileUtils {
                 }
             }
         }
-    }
-
-    /**
-     * getJarPath
-     *
-     * @param clazz clazz
-     * @return String
-     */
-    public static String getJarPath(Class<?> clazz) {
-        String decodedPath = clazz.getProtectionDomain().getCodeSource().getLocation().getPath();
-        if (decodedPath.startsWith("file:")) {
-            decodedPath = decodedPath.substring(5); // Remove "file:" prefix
-        }
-        if (decodedPath.contains("!")) {
-            decodedPath = decodedPath.substring(0, decodedPath.indexOf("!")); // Remove everything after "!"
-        }
-        return new File(decodedPath).getParentFile().getPath();
     }
 }

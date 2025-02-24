@@ -106,14 +106,15 @@ public final class DatabaseOperator {
                 } else {
                     LOGGER.error("The sql storage {} already exists, please change your table name to storage sql.",
                         tableName);
-                    System.exit(0);
+                    System.exit(-1);
                 }
             } else {
                 createTable(tableName, tableType);
             }
         } catch (SQLException e) {
             LOGGER.error("Initialize sql storage failed, the message is: {}.", e.getMessage());
-            System.exit(0);
+            closeConnection(connection);
+            System.exit(-1);
         }
     }
 
