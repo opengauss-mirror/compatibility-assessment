@@ -19,6 +19,7 @@ import org.opengauss.tool.config.transcribe.TranscribeConfig;
 import org.opengauss.tool.parse.object.SqlInfo;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
+import org.opengauss.tool.utils.FileUtils;
 import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +114,7 @@ public class GeneralLogTask extends TranscribeTask {
                 }
                 storageSql(sqlList);
                 sqlList.clear();
-                if (count < sqlLimit) {
+                if (count < sqlLimit || sqlId >= 100) {
                     break;
                 }
                 startIndex += count;
@@ -124,6 +125,10 @@ public class GeneralLogTask extends TranscribeTask {
                 return;
             }
         }
+        sqlList.add(new SqlInfo(sqlId + 1, false, "finished"));
+        storageSql(sqlList);
+        sqlList.clear();
+        FileUtils.createFile(config.getFileConfig().getFilePath() + "parseEndFile");
         DatabaseOperator.closeStatement(ps);
         DatabaseOperator.closeResultSet(res);
         DatabaseOperator.closeConnection(sourceConnection);
@@ -154,6 +159,7 @@ public class GeneralLogTask extends TranscribeTask {
         } else {
             opengaussOperator.insertSqlToDatabase(sqlList, false);
         }
+        FileUtils.write2File(String.valueOf(sqlId), processPath);
     }
 
     private SqlInfo buildSql(ResultSet res) throws SQLException {

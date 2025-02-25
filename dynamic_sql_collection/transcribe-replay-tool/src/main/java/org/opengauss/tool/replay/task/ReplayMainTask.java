@@ -104,9 +104,7 @@ public abstract class ReplayMainTask extends WorkTask {
     public void start() {
         startTime = System.currentTimeMillis();
         slowSqlOperator.createSlowTable();
-        if (replayConfig.isRecordProcess()) {
-            recordOperator.recordSqlCount();
-        }
+        recordOperator.recordSqlCount();
         replaySubTask.init();
         replay();
         while (!ProcessModel.getInstance().isReplayFinish()) {
@@ -126,9 +124,7 @@ public abstract class ReplayMainTask extends WorkTask {
         replayLogOperator.printTopSlowSql(processModel.getSlowSqlQueue());
         slowSqlOperator.exportSlowSql();
         draw();
-        if (replayConfig.isRecordProcess()) {
-            recordOperator.stopRecord();
-        }
+        recordOperator.stopRecord();
     }
 
     /**

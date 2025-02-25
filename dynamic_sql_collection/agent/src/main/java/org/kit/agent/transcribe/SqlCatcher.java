@@ -11,8 +11,10 @@ import org.kit.agent.common.Constant;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Properties;
@@ -29,6 +31,7 @@ public class SqlCatcher {
     private static final String SQL_FILE_PATH = "sql.file.path";
     private static final String SQL_FILE_NAME = "sql.file.name";
     private static final String SQL_FILE_SIZE = "sql.file.size";
+    private static final String PROCESS_FILE_NAME = "parse-process.txt";
 
     private JSONObject json;
     private String sqlFilePath;
@@ -37,6 +40,7 @@ public class SqlCatcher {
     private long sqlId;
     private int fileId = 1;
     private String schema;
+    private String processPath;
 
     /**
      * Constructor
@@ -45,6 +49,8 @@ public class SqlCatcher {
      */
     public SqlCatcher(String configPath) {
         loadConfig(configPath);
+        this.processPath = Paths.get(configPath).getParent().getParent().toString() + File.separator
+            + PROCESS_FILE_NAME;
         this.json = JSONUtil.createObj();
     }
 
@@ -65,6 +71,7 @@ public class SqlCatcher {
         sqlId++;
         String res = formatSql(str);
         writeSqlToFile(res);
+        write2File(String.valueOf(sqlId), processPath);
     }
 
     private void writeSqlToFile(String res) {
@@ -134,5 +141,13 @@ public class SqlCatcher {
             sb.append(paths[i]).append(File.separator);
         }
         return sb.toString();
+    }
+
+    private static void write2File(String info, String fileName) {
+        try (FileWriter writer = new FileWriter(fileName)) {
+            writer.write(info);
+        } catch (IOException ex) {
+            log.error("write file {} failed, error message:{}.", fileName, ex.getMessage());
+        }
     }
 }

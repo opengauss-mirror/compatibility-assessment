@@ -57,7 +57,6 @@ public class ReplayConfig {
     private boolean isCompareResult;
     private String selectResultPath;
     private String resultFileName;
-    private boolean isRecordProcess;
 
     /**
      * load replayConfig from props
@@ -86,8 +85,6 @@ public class ReplayConfig {
         this.replayMaxTime = Integer.parseInt(props.getProperty(ConfigReader.REPLAY_MAX_TIME, "0"));
         this.isSourceTimeInterval = Boolean.parseBoolean(
                 props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "false"));
-        this.isRecordProcess = Boolean.parseBoolean(
-            props.getProperty(ConfigReader.SQL_REPLAY_RECORD_PROCESS, "true"));
         this.isCompareResult = Boolean.parseBoolean(props.getProperty(ConfigReader.COMPARE_SELECT_RESULT, "false"));
         this.selectResultPath = props.getProperty(ConfigReader.SELECT_RESULT_PATH);
         this.resultFileName = props.getProperty(ConfigReader.RESULT_FILE_NAME);

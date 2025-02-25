@@ -72,6 +72,7 @@ public class ParseTask extends WorkTask {
     private static final DateTimeFormatter TIME_PATTERN = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss.SSS");
     private static final BlockingQueue<SelectResult> RESULT_QUEUE = new LinkedBlockingQueue<>();
     private static final int BYTE_CONVERSION_RATIO = 1024 * 1024;
+    private static final String PROCESS_FILE_NAME = "parse-process.txt";
 
     private final ParseConfig config;
     private final ThreadPoolExecutor threadPool;
@@ -87,6 +88,7 @@ public class ParseTask extends WorkTask {
     private FileOperator fileOperator;
     private LocalDateTime startTime;
     private int fileId = 1;
+    private String processPath;
 
     /**
      * Constructor
@@ -118,6 +120,8 @@ public class ParseTask extends WorkTask {
     }
 
     private void initStorage() {
+        this.processPath = FileUtils.getJarPath() + File.separator + PROCESS_FILE_NAME;
+        FileUtils.createFile(processPath);
         if (config.getOpengaussConfig() != null) {
             opengaussOperator = new DatabaseOperator(config.getOpengaussConfig(), "openGauss");
             opengaussOperator.initStorage(config.getOpengaussConfig(), true, config.isDropPreviousSql());
@@ -401,7 +405,7 @@ public class ParseTask extends WorkTask {
                 }
                 isBlock.set(false);
                 sqlList.sort((o1, o2) -> (int) (o1.getSqlId() - o2.getSqlId()));
-                storageSql(sqlList);
+                storageSql(sqlList, true);
                 sqlList.clear();
             }
         } while (!isCommitSqlFinished.get());
@@ -465,7 +469,7 @@ public class ParseTask extends WorkTask {
         SqlInfo endInfo = new SqlInfo();
         endInfo.setSql("finished");
         sqlList.add(endInfo);
-        storageSql(sqlList);
+        storageSql(sqlList, false);
         if (config.getStorageMode().equals(ConfigReader.JSON)) {
             fileOperator.sendFinishedFlag();
         }
@@ -510,7 +514,7 @@ public class ParseTask extends WorkTask {
         long duration = curr.toEpochSecond(ZoneOffset.UTC) - startTime.toEpochSecond(ZoneOffset.UTC);
         String res = String.format("%s Start Time: %s%s%s End Time: %s%s%s Duration: %s seconds%s%s SQL Count: %s",
                 table, start, line, table, current, line, table, duration, line, table, opengaussOperator == null
-                        ? fileOperator.getSqlId() : opengaussOperator.getSqlId());
+                        ? fileOperator.getSqlId() - 1 : opengaussOperator.getSqlId() - 1);
         LOGGER.info("Parse finished, the statistical results are as follows:{}{}", line, res);
     }
 
@@ -539,16 +543,24 @@ public class ParseTask extends WorkTask {
         return sb.toString();
     }
 
-    private void storageSql(List<SqlInfo> sqlList) {
+    private void storageSql(List<SqlInfo> sqlList, boolean shouldRefreshProcess) {
         if (sqlList.isEmpty()) {
             return;
         }
         if (config.getStorageMode().equals(ConfigReader.DB)) {
             opengaussOperator.refreshConnection();
             opengaussOperator.insertSqlToDatabase(sqlList, true);
+            statParseProcess(opengaussOperator.getSqlId(), shouldRefreshProcess);
         } else {
             fileOperator.writeSqlToFile(sqlList, true);
+            statParseProcess(fileOperator.getSqlId(), shouldRefreshProcess);
             LOGGER.info("Commit {} sql to file.", sqlList.size());
+        }
+    }
+
+    private void statParseProcess(long sqlId, boolean shouldRefreshProcess) {
+        if (shouldRefreshProcess) {
+            FileUtils.write2File(String.valueOf(sqlId), processPath);
         }
     }
 
