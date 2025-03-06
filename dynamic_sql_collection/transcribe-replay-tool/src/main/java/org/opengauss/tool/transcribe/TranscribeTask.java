@@ -447,39 +447,25 @@ public class TranscribeTask extends WorkTask {
     private void monitorDisk() {
         double diskUseRate;
         try {
-            Process dfProcess = Runtime.getRuntime().exec("df");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(dfProcess.getInputStream(),
-                    StandardCharsets.UTF_8));
+            Process dfProcess = Runtime.getRuntime().exec("df " + config.getFileConfig().getFilePath());
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(dfProcess.getInputStream(), StandardCharsets.UTF_8));
             String line;
             String targetRate = "";
-            String root = "";
-            String target;
             String[] split;
             reader.readLine();
             while ((line = reader.readLine()) != null) {
                 line = line.replaceAll("[ \\t]+", " ");
                 split = line.split(" ");
-                target = split[split.length - 1];
-                if (File.separator.equals(target)) {
-                    root = split[split.length - 2];
-                    continue;
-                }
-                if (config.getFileConfig().getFilePath().startsWith(target)) {
-                    targetRate = split[split.length - 2];
-                    break;
-                }
+                targetRate = split[split.length - 2];
             }
             reader.close();
-            String res;
-            if (!targetRate.isEmpty()) {
-                res = targetRate.substring(0, targetRate.length() - 1);
-            } else {
-                res = root.substring(0, root.length() - 1);
-            }
+            String res = targetRate.substring(0, targetRate.length() - 1);
+            ;
             diskUseRate = Double.parseDouble(res) / 100.0;
             if (diskUseRate >= config.getDiskThreshold()) {
                 LOGGER.warn("The current file system Disk usage rate is {}%, which has reached the upper limit {}%."
-                        + " Transcribe will be stopped.", res, String.format("%.2f", config.getDiskThreshold() * 100));
+                    + " Transcribe will be stopped.", res, String.format("%.2f", config.getDiskThreshold() * 100));
                 stop(false);
             }
         } catch (IOException e) {
