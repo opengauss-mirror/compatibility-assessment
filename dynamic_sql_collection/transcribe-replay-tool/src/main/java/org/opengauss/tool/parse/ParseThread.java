@@ -65,6 +65,8 @@ public class ParseThread extends Thread {
 
     private static final int FORMAT_FE = 254;
 
+    private static final int EOF_MARK = 254;
+
     /**
      * packet queue
      */
@@ -376,6 +378,10 @@ public class ParseThread extends Thread {
         try {
             while (point < data.length - 11) {
                 point = point + 4;
+                if (data[point] == (byte) EOF_MARK) {
+                    point = point + 5;
+                    continue;
+                }
                 List<String> row = new ArrayList<>();
                 for (int i = 0; i < fieldNumber; i++) {
                     int textLen;
