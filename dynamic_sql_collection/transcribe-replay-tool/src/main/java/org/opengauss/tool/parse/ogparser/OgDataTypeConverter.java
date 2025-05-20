@@ -15,6 +15,7 @@
 
 package org.opengauss.tool.parse.ogparser;
 
+import org.opengauss.tool.parse.ValueConverter;
 import org.opengauss.tool.parse.object.PreparedValue;
 import org.opengauss.tool.parse.object.ProtocolConstant;
 import org.opengauss.tool.utils.CommonParser;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.DateTimeException;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,7 @@ import java.util.Map;
 public final class OgDataTypeConverter {
     private static final Logger LOGGER = LoggerFactory.getLogger(OgDataTypeConverter.class);
     private static final Map<Integer, String> OID_TO_DATA_TYPE_MAP = new HashMap<>();
+    private static final int INT_LENGTH = 4;
 
     static {
         OID_TO_DATA_TYPE_MAP.put(0, "unspecified");
@@ -57,6 +60,30 @@ public final class OgDataTypeConverter {
         OID_TO_DATA_TYPE_MAP.put(1560, "bit");
         OID_TO_DATA_TYPE_MAP.put(114, "json");
         OID_TO_DATA_TYPE_MAP.put(88, "blob");
+    }
+
+    private static final Map<String, ValueConverter> DATA_TYPE_CONVERTER_MAP = new HashMap<String, ValueConverter>() {
+        {
+            put("int", OgDataTypeConverter::convertBinaryIntValue);
+            put("double", OgDataTypeConverter::convertBinaryDoubleValue);
+        }
+    };
+
+    private static PreparedValue convertBinaryDoubleValue(byte[] data, int start) {
+        int len = CommonParser.parseIntByBigEndian(data, start, start + INT_LENGTH);
+        long bits = CommonParser.parseLongByBigEndian(data, start, start + len);
+        double value = Double.longBitsToDouble(bits);
+        return new PreparedValue("double", String.valueOf(value), INT_LENGTH + len);
+    }
+
+    private static PreparedValue convertBinaryIntValue(byte[] data, int start) {
+        int len = CommonParser.parseIntByBigEndian(data, start, start + INT_LENGTH);
+        if (len <= INT_LENGTH) {
+            int value = CommonParser.parseIntByBigEndian(data, start + INT_LENGTH, start + INT_LENGTH + len);
+            return new PreparedValue("int", String.valueOf(value), INT_LENGTH + len);
+        }
+        long value = CommonParser.parseLongByBigEndian(data, start + INT_LENGTH, start + INT_LENGTH + len);
+        return new PreparedValue("long", String.valueOf(value), INT_LENGTH + len);
     }
 
     private static PreparedValue convertStringValue(byte[] data, int start) {
@@ -96,13 +123,20 @@ public final class OgDataTypeConverter {
      * @param startIndex int the start index
      * @return PreparedValue the prepared parameter
      */
-    public static PreparedValue getValue(String dataType, byte[] data, int startIndex) {
-        PreparedValue preparedValue = convertStringValue(data, startIndex);
-        if ("unspecified".equals(dataType)) {
-            specificUnknownType(preparedValue);
+    public static PreparedValue getValue(String dataType, int format, byte[] data, int startIndex) {
+        PreparedValue preparedValue;
+        // 0 is text format, 1 is binary format
+        if (format == 1) {
+            preparedValue = DATA_TYPE_CONVERTER_MAP.get(dataType).convert(data, startIndex);
         } else {
-            preparedValue.setType(dataType);
+            preparedValue = convertStringValue(data, startIndex);
+            if ("unspecified".equals(dataType)) {
+                specificUnknownType(preparedValue);
+            } else {
+                preparedValue.setType(dataType);
+            }
         }
+
         return preparedValue;
     }
 
@@ -133,7 +167,7 @@ public final class OgDataTypeConverter {
         try {
             LocalTime localTime = LocalTime.parse(value);
             Time.valueOf(localTime);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | DateTimeException e) {
             return false;
         }
         return true;

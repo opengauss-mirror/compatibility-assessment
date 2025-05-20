@@ -257,11 +257,17 @@ public class OgMessageParser extends ParseThread {
             return;
         }
         int paraFormats = CommonParser.parseIntByBigEndian(data, start, start + 2);
-        start += (2 + 2 * paraFormats);
+        start += 2;
+        List<Integer> paraFormatList = new ArrayList<>(paraFormats);
+        for (int i = 0; i < paraFormats; i++) {
+            paraFormatList.add(CommonParser.parseIntByBigEndian(data, start, start + 2));
+            start += 2;
+        }
         int paraValueNum = CommonParser.parseIntByBigEndian(data, start, start + 2);
         start += 2;
         for (int i = 0; i < paraValueNum; i++) {
-            PreparedValue paraValue = OgDataTypeConverter.getValue(preparedSql.getTypeList().get(i), data, start);
+            PreparedValue paraValue = OgDataTypeConverter.getValue(preparedSql.getTypeList().get(i),
+                paraFormatList.get(i), data, start);
             start += paraValue.getOffset();
             preparedSql.getParameterList().add(paraValue);
         }
@@ -306,7 +312,7 @@ public class OgMessageParser extends ParseThread {
         List<PreparedValue> paraList = preparedSql.getParameterList();
         while (paraList.size() < recordCount * paraNum) {
             PreparedValue paraValue = OgDataTypeConverter.getValue(preparedSql.getTypeList().get(paraIndex % paraNum),
-                data, start);
+                0, data, start);
             start += paraValue.getOffset();
             preparedSql.getParameterList().add(paraValue);
             paraIndex++;

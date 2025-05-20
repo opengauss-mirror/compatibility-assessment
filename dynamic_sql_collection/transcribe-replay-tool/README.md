@@ -79,9 +79,9 @@ SQL流量录制回放工具，可以录制源端数据库客户端的业务sql�
 - 安装包获取
 ~~~
 # 每日构建
-wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/transcribe-replay-tool-7.0.0-RC1.tar.gz
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/transcribe-replay-tool-7.0.0-RC2.tar.gz
 # 正式发布包
-wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/6.0.0/tools/transcribe-replay-tool-6.0.0.tar.gz
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/7.0.0-RC1/tools/transcribe-replay-tool-7.0.0-RC1.tar.gz
 ~~~
 
 - 完整性校验
@@ -96,7 +96,7 @@ wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/6.0.0/tools/transcribe-r
 
 2. 在[官网下载页面](https://opengauss.org/zh/download/)的openGauss Tools部分中复制对应驱动包的sha256值，与步骤1计算出的sha256值做对比，如果一致则可以确认下载下来的包是完整的，否则需要重新下载。
 
-### transcribe-replay-tool-7.0.0-RC1.jar
+### transcribe-replay-tool-XXX.jar
 
 录制回放核心工具，用于调度各种插件进行录制，并负责解析网络数据包文件，以及sql回放。
 
