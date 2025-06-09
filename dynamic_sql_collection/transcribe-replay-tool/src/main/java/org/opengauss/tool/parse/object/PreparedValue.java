@@ -42,6 +42,19 @@ public class PreparedValue {
 
     /**
      * Constructor
+     *
+     * @param dataType String the data type
+     * @param value  String the value
+     * @param offset int the offset
+     */
+    public PreparedValue(String dataType, String value, int offset) {
+        this.type = dataType;
+        this.value = value;
+        this.offset = offset;
+    }
+
+    /**
+     * Constructor
      */
     public PreparedValue() {
     }

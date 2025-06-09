@@ -110,6 +110,21 @@ public final class CommonParser {
      * @param start int the start index
      * @param end int the end index
      *
+     * @return long the parse result
+     */
+    public static long parseLongByBigEndian(byte[] packet, int start, int end) {
+        return Long.parseLong(parseByBigEndian(packet, start, end), 16);
+    }
+
+
+
+    /**
+     * Parse int by big endian
+     *
+     * @param packet byte[] the packet
+     * @param start int the start index
+     * @param end int the end index
+     *
      * @return int the parse result
      */
     public static int parseIntByLittleEndian(byte[] packet, int start, int end) {
