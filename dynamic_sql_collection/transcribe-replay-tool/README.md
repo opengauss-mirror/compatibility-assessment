@@ -81,7 +81,7 @@ SQL流量录制回放工具，可以录制源端数据库客户端的业务sql�
 # 每日构建
 wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/transcribe-replay-tool-7.0.0-RC2.tar.gz
 # 正式发布包
-wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/7.0.0-RC1/tools/transcribe-replay-tool-7.0.0-RC1.tar.gz
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/7.0.0-RC2/tools/transcribe-replay-tool-7.0.0-RC2.tar.gz
 ~~~
 
 - 完整性校验
@@ -153,7 +153,7 @@ mvn clean package
 ## 工具使用
 - 启动命令
 ~~~
-java -jar transcribe-replay-tool-7.0.0-RC1.jar -t [transcribe|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
+java -jar transcribe-replay-tool-7.0.0-RC2.jar -t [transcribe|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
 ~~~
 
 - 参数介绍
@@ -165,7 +165,7 @@ java -jar transcribe-replay-tool-7.0.0-RC1.jar -t [transcribe|parse|replay] -f [
 ### 录制端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-7.0.0-RC1.jar -t transcribe -f transcribe.properties
+java -jar transcribe-replay-tool-7.0.0-RC2.jar -t transcribe -f transcribe.properties
 ~~~
 
 #### 录制端配置项
@@ -292,7 +292,7 @@ sql.table.drop=false
 ### 解析端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-7.0.0-RC1.jar -t parse -f parse.properties
+java -jar transcribe-replay-tool-7.0.0-RC2.jar -t parse -f parse.properties
 ~~~
 
 #### 解析端配置项
@@ -352,7 +352,7 @@ result.file.size=10
 ### 回放端
 #### 启动命令
 ~~~
-java -jar transcribe-replay-tool-7.0.0-RC1.jar -t replay -f replay.properties
+java -jar transcribe-replay-tool-7.0.0-RC2.jar -t replay -f replay.properties
 ~~~
 
 #### 回放端配置项

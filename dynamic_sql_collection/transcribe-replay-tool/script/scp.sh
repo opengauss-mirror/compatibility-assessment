@@ -1,6 +1,6 @@
 #!/bin/bash
 
-JAR_NAME="transcribe-replay-tool-7.0.0-RC1.jar"
+JAR_NAME="transcribe-replay-tool-7.0.0-RC2.jar"
 source_path=""
 target_path=""
 file_name=""
