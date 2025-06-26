@@ -6,6 +6,8 @@ dataSource=""
 confFile=""
 reportFile=""
 jarName="compatibility-assessment-${VERSION}.jar"
+export MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
+export OPENGAUSS_PASSWORD="${OPENGAUSS_PASSWORD:-}"
 
 function print_help()
 {

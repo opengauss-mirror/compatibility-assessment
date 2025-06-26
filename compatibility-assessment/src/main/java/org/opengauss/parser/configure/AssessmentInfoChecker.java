@@ -140,7 +140,6 @@ public class AssessmentInfoChecker {
         checkDatafromCollect(props);
         checkDatafromFile(props);
         checkDolphin(props);
-        checkOgInfo(props);
     }
 
     private static void checkMysqlInfo(Properties props) {
