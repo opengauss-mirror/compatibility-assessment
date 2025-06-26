@@ -45,7 +45,10 @@ public class DbConnector {
         String port = assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.PORT);
         String dbname = assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.DBNAME);
         String user = assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.USER);
-        String password = assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.PASSWORD);
+        String password = System.getenv("MYSQL_PASSWORD");
+        if (password == null) {
+            assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.PASSWORD);
+        }
         String jdbcparam = assessmentInfo.getProperty(AssessmentInfoChecker.MYSQL, AssessmentInfoChecker.JDBCPARAM);
         String url = String.format(Locale.ROOT, "jdbc:mysql://%s:%s/%s?useSSL=false",
                 host, port, dbname);

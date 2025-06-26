@@ -46,8 +46,11 @@ public class ConnectionUtils {
                 AssessmentInfoChecker.PORT);
         String user = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
                 AssessmentInfoChecker.USER);
-        String password = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
-                AssessmentInfoChecker.PASSWORD);
+        String password = System.getenv("OPENGAUSS_PASSWORD");
+        if (password == null) {
+            AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.OPENGAUSS,
+                    AssessmentInfoChecker.PASSWORD);
+        }
         String url = "jdbc:opengauss://" + host + ":" + port + "/" + dbname
                 + "?useUnicode=false&characterEncoding=utf8&usessL=false";
         Connection connection = null;
