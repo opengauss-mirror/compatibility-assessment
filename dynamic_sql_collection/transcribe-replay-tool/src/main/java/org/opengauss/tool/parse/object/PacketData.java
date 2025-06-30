@@ -39,6 +39,7 @@ public class PacketData {
     private int destinationPort;
     private String clientId;
     private AtomicLong microsecondTimestamp;
+    private long seqNum;
 
     /**
      * Constructor
