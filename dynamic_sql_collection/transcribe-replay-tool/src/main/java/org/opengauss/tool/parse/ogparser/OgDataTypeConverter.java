@@ -78,6 +78,9 @@ public final class OgDataTypeConverter {
 
     private static PreparedValue convertBinaryIntValue(byte[] data, int start) {
         int len = CommonParser.parseIntByBigEndian(data, start, start + INT_LENGTH);
+        if (len == 0) {
+            return new PreparedValue("long", null, INT_LENGTH);
+        }
         if (len <= INT_LENGTH) {
             int value = CommonParser.parseIntByBigEndian(data, start + INT_LENGTH, start + INT_LENGTH + len);
             return new PreparedValue("int", String.valueOf(value), INT_LENGTH + len);
