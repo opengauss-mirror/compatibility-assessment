@@ -132,7 +132,7 @@ public class OgMessageParser extends ParseThread {
         byte[] data = packet.getData();
         int start = 0;
         int length;
-        while (start < data.length - ProtocolConstant.OG_DATA_LENGTH_BYTES) {
+        while (start < data.length - ProtocolConstant.OG_DATA_TYPE_AND_LENGTH_BYTES) {
             length = CommonParser.parseIntByBigEndian(data, start + 1,
                 start + ProtocolConstant.OG_DATA_TYPE_AND_LENGTH_BYTES);
             PacketData ogPacket = new PacketData();
