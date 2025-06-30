@@ -270,6 +270,7 @@ public class ParseTask extends WorkTask {
         int skipLength;
         String sourceIp;
         String destinationIp;
+        long seqNum;
         while (true) {
             if (isBlock.get()) {
                 continue;
@@ -294,6 +295,8 @@ public class ParseTask extends WorkTask {
                 destinationIp = parseIPV4Address(packet, 30, 34);
                 sourcePort = CommonParser.parseIntByBigEndian(packet, 34, 36);
                 destinationPort = CommonParser.parseIntByBigEndian(packet, 36, 38);
+                // sequence number
+                seqNum = CommonParser.parseLongByBigEndian(packet, 38, 42);
             } else {
                 headerLength = CommonParser.parseIntByLittleEndian(packet, 66, 67) / 4;
                 skipLength = ProtocolConstant.ETHERNET_HEADER_LENGTH + ProtocolConstant.IPV6_HEADER_LENGTH
@@ -305,11 +308,14 @@ public class ParseTask extends WorkTask {
                 destinationIp = parseIPV6Address(packet, 38, 54);
                 sourcePort = CommonParser.parseIntByBigEndian(packet, 54, 56);
                 destinationPort = CommonParser.parseIntByBigEndian(packet, 56, 58);
+                // sequence number
+                seqNum = CommonParser.parseLongByBigEndian(packet, 58, 62);
             }
             PacketData packetData = new PacketData(packetId.get(), identifyPacketType(sourceIp, sourcePort));
             packetData.setOriginInfo(originPacket);
             packetData.build(sourceIp, sourcePort, destinationIp, destinationPort);
             packetData.clonePacketData(packet, skipLength);
+            packetData.setSeqNum(seqNum);
             distribute(packetData);
         }
         stop();

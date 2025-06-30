@@ -32,6 +32,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -247,9 +248,10 @@ public class ParseThread extends Thread {
             return new PacketData();
         }
         PacketData res = packetDataList.get(0);
-        if (packetDataList.size() == 1 || isDataRepetitive(packetDataList)) {
+        if (packetDataList.size() == 1) {
             return res;
         }
+        packetDataList.sort(Comparator.comparingLong(PacketData::getSeqNum));
         res.setMicrosecondTimestamp(packetDataList.get(packetDataList.size() - 1).getMicrosecondTimestamp());
         int totalLength = 0;
         for (PacketData packetData : packetDataList) {
@@ -257,31 +259,19 @@ public class ParseThread extends Thread {
         }
         byte[] mergeData = Arrays.copyOf(packetDataList.get(0).getData(), totalLength);
         int offset = packetDataList.get(0).getData().length;
+        long expectNextSeqNum = packetDataList.get(0).getSeqNum() + offset;
         for (int i = 1; i < packetDataList.size(); i++) {
-            byte[] next = packetDataList.get(i).getData();
-            System.arraycopy(next, 0, mergeData, offset, next.length);
-            offset += next.length;
+            PacketData packetData = packetDataList.get(i);
+            if (packetData.getSeqNum() == expectNextSeqNum) {
+                byte[] next = packetData.getData();
+                System.arraycopy(next, 0, mergeData, offset, next.length);
+                offset += next.length;
+                expectNextSeqNum += next.length;
+            }
         }
         res.setData(mergeData);
         res.setMergeInfo(packetDataList.get(0));
         return res;
-    }
-
-    private boolean isDataRepetitive(List<PacketData> packetDataList) {
-        if (packetDataList.size() != 2) {
-            return false;
-        }
-        byte[] origin = packetDataList.get(0).getData();
-        byte[] copy = packetDataList.get(1).getData();
-        if (origin.length != copy.length) {
-            return false;
-        }
-        for (int i = 0; i < origin.length; i++) {
-            if (origin[i] != copy[i]) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private PacketData pollNextPacket() {
