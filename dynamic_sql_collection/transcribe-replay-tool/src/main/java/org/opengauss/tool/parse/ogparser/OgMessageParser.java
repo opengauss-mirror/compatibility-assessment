@@ -74,7 +74,6 @@ public class OgMessageParser extends ParseThread {
 
     @Override
     protected synchronized void setDuration(long microsecondTimestamp) {
-        incompleteSql.setExecuteDuration(microsecondTimestamp);
         for (SqlInfo sql : sqlList) {
             sql.setExecuteDuration(microsecondTimestamp);
         }
