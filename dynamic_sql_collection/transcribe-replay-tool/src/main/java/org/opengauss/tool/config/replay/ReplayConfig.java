@@ -16,6 +16,7 @@
 package org.opengauss.tool.config.replay;
 
 import lombok.Data;
+
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.tool.config.DatabaseConfig;
 import org.opengauss.tool.utils.ConfigReader;
@@ -70,12 +71,13 @@ public class ReplayConfig {
         this.strategy = props.getProperty(ConfigReader.SQL_REPLAY_STRATEGY);
         this.multiple = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_MULTIPLE, "1"));
         this.isOnlyReplayQuery = isOnlyQuery(props);
-        this.maxPoolSize = ConfigReader.SERIAL_REPLAY.equals(strategy) ? 1
-                : Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_MAX_POOL_SIZE, "1"));
+        this.maxPoolSize = ConfigReader.SERIAL_REPLAY.equals(strategy)
+            ? 1
+            : Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_MAX_POOL_SIZE, "1"));
         this.slowSqlRule = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_SLOW_SQL_RULE, "2"));
         this.durationDiff = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_SLOW_SQL_TIME_DIFF, "1000"));
-        this.slowThreshold = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD,
-                "1000"));
+        this.slowThreshold = Integer.parseInt(
+            props.getProperty(ConfigReader.SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, "1000"));
         this.csvDir = props.getProperty(ConfigReader.SQL_REPLAY_SLOW_SQL_CSV_DIR);
         this.slowSqlTopNum = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_SLOW_TOP_NUM, "5"));
         this.collectIdThreshold = Integer.parseInt(props.getProperty(ConfigReader.SQL_REPLAY_DRAW_THRESHOLD, "1000"));
@@ -84,7 +86,7 @@ public class ReplayConfig {
         this.schemaMap = getSchemaMapping(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_SCHEMA_MAP));
         this.replayMaxTime = Integer.parseInt(props.getProperty(ConfigReader.REPLAY_MAX_TIME, "0"));
         this.isSourceTimeInterval = Boolean.parseBoolean(
-                props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "false"));
+            props.getProperty(ConfigReader.SOURCE_TIME_INTERVAL_REPLAY, "false"));
         this.isCompareResult = Boolean.parseBoolean(props.getProperty(ConfigReader.COMPARE_SELECT_RESULT, "false"));
         this.selectResultPath = props.getProperty(ConfigReader.SELECT_RESULT_PATH);
         this.resultFileName = props.getProperty(ConfigReader.RESULT_FILE_NAME);
@@ -92,7 +94,9 @@ public class ReplayConfig {
         targetDbConfig.setDbIp(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_IP));
         targetDbConfig.setDbPort(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_PORT));
         targetDbConfig.setUsername(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_USERNAME));
-        targetDbConfig.setPassword(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_PASSWORD));
+        targetDbConfig.setPassword(
+            ConfigReader.getPassword(props.getProperty(ConfigReader.SQL_REPLAY_DATABASE_PASSWORD),
+                "Please enter the user password for the target database in SQL playback (sql.replay.database.password):"));
         targetDbConfig.setCluster(targetDbConfig.getDbIp().contains(","));
         if (ConfigReader.DB.equalsIgnoreCase(storageMode)) {
             sourceDbConfig = new DatabaseConfig();
@@ -110,7 +114,6 @@ public class ReplayConfig {
         propSchemaMap.put(ConfigReader.SLOW_DB, schemaMapArray[0].substring(schemaMapArray[0].indexOf(":") + 1));
         return propSchemaMap;
     }
-
 
     private List<String> getSessionList(String prop) {
         String sessionStr = prop.substring(1, prop.length() - 1);

@@ -16,6 +16,10 @@
 package org.opengauss.tool.utils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 import org.opengauss.tool.config.parse.ParseConfig;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.config.transcribe.AttachConfig;
@@ -139,7 +143,6 @@ public final class ConfigReader {
      * parse
      */
     public static final String PARSE = "parse";
-
     // parse
     /**
      * sql file path
@@ -175,14 +178,12 @@ public final class ConfigReader {
      * packet batch size
      */
     public static final String PACKET_BATCH_SIZE = "packet.batch.size";
-
     // transcribe
     // general parameters
     /**
      * sql transcribe mode
      */
     public static final String SQL_TRANSCRIBE_MODE = "sql.transcribe.mode";
-
     // tcpdump
     /**
      * tcpdump plugin path
@@ -233,7 +234,6 @@ public final class ConfigReader {
      * file count limit
      */
     public static final String FILE_COUNT_LIMIT = "file.count.limit";
-
     // attach
     /**
      * attach plugin path
@@ -254,7 +254,6 @@ public final class ConfigReader {
      * attach capture duration
      */
     public static final String ATTACH_CAPTURE_DURATION = "attach.capture.duration";
-
     // tcpdump/attach
 
     /**
@@ -296,7 +295,6 @@ public final class ConfigReader {
      * remote receiver password
      */
     public static final String REMOTE_RECEIVER_PASSWORD = "remote.receiver.password";
-
     /**
      * remote node ip
      */
@@ -311,7 +309,6 @@ public final class ConfigReader {
      * remote retry count
      */
     public static final String REMOTE_RETRY_COUNT = "remote.retry.count";
-
     // general log
     /**
      * general database ip
@@ -342,13 +339,11 @@ public final class ConfigReader {
      * general log start time
      */
     public static final String GENERAL_START_TIME = "general.start.time";
-
     // attach/general log
     /**
      * sql storage mode
      */
     public static final String SQL_STORAGE_MODE = "sql.storage.mode";
-
     // database
     /**
      * sql database ip
@@ -429,7 +424,7 @@ public final class ConfigReader {
      * replay strategy list
      */
     public static final List<String> REPLAY_STRATEGY_LIST = Collections.unmodifiableList(
-            Arrays.asList(SERIAL_REPLAY, PARALLEL_REPLAY));
+        Arrays.asList(SERIAL_REPLAY, PARALLEL_REPLAY));
 
     /**
      * slow sql strategy list
@@ -564,8 +559,8 @@ public final class ConfigReader {
             }
             config.load(props);
         } catch (IOException e) {
-            LOGGER.error("IOException occurred while read config file {}, error message is: {}.",
-                    configPath, e.getMessage());
+            LOGGER.error("IOException occurred while read config file {}, error message is: {}.", configPath,
+                e.getMessage());
         }
         return config;
     }
@@ -574,7 +569,7 @@ public final class ConfigReader {
         String transcribeMode = props.getProperty(ConfigReader.SQL_TRANSCRIBE_MODE);
         if (!TCPDUMP.equals(transcribeMode) && !ATTACH.equals(transcribeMode) && !GENERAL.equals(transcribeMode)) {
             LOGGER.error("Transcribe mode is not supported, {} must be one of the {}, {}, {}.", SQL_TRANSCRIBE_MODE,
-                    TCPDUMP, ATTACH, GENERAL);
+                TCPDUMP, ATTACH, GENERAL);
             System.exit(-1);
         }
         if (TCPDUMP.equals(transcribeMode)) {
@@ -610,7 +605,7 @@ public final class ConfigReader {
             config.load(props);
         } catch (IOException ex) {
             LOGGER.error("IOException occurred while read config file {}, error message is: {}.", configPath,
-                    ex.getMessage());
+                ex.getMessage());
         }
         return config;
     }
@@ -668,14 +663,13 @@ public final class ConfigReader {
         CONFIG_MAP.put(SQL_DATABASE_PORT, matchPort(props.getProperty(SQL_DATABASE_PORT)));
         CONFIG_MAP.put(SQL_DATABASE_USERNAME, matchRegularString(props.getProperty(SQL_DATABASE_USERNAME)));
         CONFIG_MAP.put(SQL_DATABASE_NAME, matchRegularString(props.getProperty(SQL_DATABASE_NAME)));
-        CONFIG_MAP.put(SQL_DATABASE_PASSWORD, matchRegularString(props.getProperty(SQL_DATABASE_PASSWORD)));
         CONFIG_MAP.put(SQL_TABLE_NAME, matchRegularString(props.getProperty(SQL_TABLE_NAME, DEFAULT_SQL_TABLE)));
         CONFIG_MAP.put(SQL_TABLE_DROP, matchBoolean(props.getProperty(SQL_TABLE_DROP, "false")));
     }
 
     private static void putSqlFileConfig(Properties props) {
-        CONFIG_MAP.put(SQL_FILE_PATH, matchFilePath(props.getProperty(SQL_FILE_PATH, FileOperator
-                .CURRENT_PATH + DEFAULT_SQL_FILES + File.separator)));
+        CONFIG_MAP.put(SQL_FILE_PATH, matchFilePath(
+            props.getProperty(SQL_FILE_PATH, FileOperator.CURRENT_PATH + DEFAULT_SQL_FILES + File.separator)));
         CONFIG_MAP.put(SQL_FILE_SIZE, matchNumber(props.getProperty(SQL_FILE_SIZE, "10")));
         CONFIG_MAP.put(SQL_FILE_NAME, matchRegularString(props.getProperty(SQL_FILE_NAME, DEFAULT_SQL_FILE)));
     }
@@ -702,32 +696,28 @@ public final class ConfigReader {
         CONFIG_MAP.put(GENERAL_DATABASE_IP, matchIp(props.getProperty(GENERAL_DATABASE_IP)));
         CONFIG_MAP.put(GENERAL_DATABASE_PORT, matchPort(props.getProperty(GENERAL_DATABASE_PORT)));
         CONFIG_MAP.put(GENERAL_DATABASE_USERNAME, matchRegularString(props.getProperty(GENERAL_DATABASE_USERNAME)));
-        CONFIG_MAP.put(GENERAL_DATABASE_PASSWORD, matchRegularString(props.getProperty(GENERAL_DATABASE_PASSWORD)));
         CONFIG_MAP.put(GENERAL_SQL_BATCH, matchNumber(props.getProperty(GENERAL_SQL_BATCH, "1000")));
         CONFIG_MAP.put(GENERAL_START_TIME, matchTimestamp(props.getProperty(GENERAL_START_TIME, DEFAULT_START_TIME)));
     }
 
     private static void putAttachConfig(Properties props) {
-        CONFIG_MAP.put(ATTACH_PLUGIN_PATH, matchFilePath(props.getProperty(ATTACH_PLUGIN_PATH,
-                FileOperator.CURRENT_PATH + PLUGIN + File.separator)));
+        CONFIG_MAP.put(ATTACH_PLUGIN_PATH,
+            matchFilePath(props.getProperty(ATTACH_PLUGIN_PATH, FileOperator.CURRENT_PATH + PLUGIN + File.separator)));
         CONFIG_MAP.put(ATTACH_PROCESS_PID, matchNumber(props.getProperty(ATTACH_PROCESS_PID)));
         CONFIG_MAP.put(ATTACH_TARGET_SCHEMA, matchRegularString(props.getProperty(ATTACH_TARGET_SCHEMA)));
-        CONFIG_MAP.put(ATTACH_CAPTURE_DURATION, matchNumber(props.getProperty(ATTACH_CAPTURE_DURATION,
-                "1")));
+        CONFIG_MAP.put(ATTACH_CAPTURE_DURATION, matchNumber(props.getProperty(ATTACH_CAPTURE_DURATION, "1")));
         putSqlFileConfig(props);
     }
 
     private static void putTranscribeConfig(Properties props) {
-        CONFIG_MAP.put(TCPDUMP_PLUGIN_PATH, matchFilePath(props.getProperty(TCPDUMP_PLUGIN_PATH,
-                FileOperator.CURRENT_PATH + PLUGIN + File.separator)));
+        CONFIG_MAP.put(TCPDUMP_PLUGIN_PATH,
+            matchFilePath(props.getProperty(TCPDUMP_PLUGIN_PATH, FileOperator.CURRENT_PATH + PLUGIN + File.separator)));
         CONFIG_MAP.put(TCPDUMP_NETWORK_INTERFACE, matchRegularString(props.getProperty(TCPDUMP_NETWORK_INTERFACE)));
         CONFIG_MAP.put(TCPDUMP_DATABASE_PORT, matchPort(props.getProperty(TCPDUMP_DATABASE_PORT)));
-        CONFIG_MAP.put(TCPDUMP_CAPTURE_DURATION, matchNumber(props.getProperty(TCPDUMP_CAPTURE_DURATION,
-                "1")));
-        CONFIG_MAP.put(TCPDUMP_FILE_PATH, matchFilePath(props.getProperty(TCPDUMP_FILE_PATH,
-                FileOperator.CURRENT_PATH + DEFAULT_SQL_FILES + File.separator)));
-        CONFIG_MAP.put(TCPDUMP_FILE_NAME, matchRegularString(props.getProperty(TCPDUMP_FILE_NAME,
-                "sql-file")));
+        CONFIG_MAP.put(TCPDUMP_CAPTURE_DURATION, matchNumber(props.getProperty(TCPDUMP_CAPTURE_DURATION, "1")));
+        CONFIG_MAP.put(TCPDUMP_FILE_PATH, matchFilePath(
+            props.getProperty(TCPDUMP_FILE_PATH, FileOperator.CURRENT_PATH + DEFAULT_SQL_FILES + File.separator)));
+        CONFIG_MAP.put(TCPDUMP_FILE_NAME, matchRegularString(props.getProperty(TCPDUMP_FILE_NAME, "sql-file")));
         CONFIG_MAP.put(TCPDUMP_FILE_SIZE, matchNumber(props.getProperty(TCPDUMP_FILE_SIZE, "10")));
         CONFIG_MAP.put(FILE_COUNT_LIMIT, matchNumber(props.getProperty(FILE_COUNT_LIMIT, "100")));
     }
@@ -746,10 +736,10 @@ public final class ConfigReader {
         }
         if (Boolean.parseBoolean(shouldCheckResource)) {
             CONFIG_MAP.put(MAX_CPU_THRESHOLD, matchDouble(props.getProperty(MAX_CPU_THRESHOLD, DEFAULT_DOUBLE_VALUE)));
-            CONFIG_MAP.put(MAX_MEMORY_THRESHOLD, matchDouble(props.getProperty(MAX_MEMORY_THRESHOLD,
-                    DEFAULT_DOUBLE_VALUE)));
-            CONFIG_MAP.put(MAX_DISK_THRESHOLD, matchDouble(props.getProperty(MAX_DISK_THRESHOLD,
-                    DEFAULT_DOUBLE_VALUE)));
+            CONFIG_MAP.put(MAX_MEMORY_THRESHOLD,
+                matchDouble(props.getProperty(MAX_MEMORY_THRESHOLD, DEFAULT_DOUBLE_VALUE)));
+            CONFIG_MAP.put(MAX_DISK_THRESHOLD,
+                matchDouble(props.getProperty(MAX_DISK_THRESHOLD, DEFAULT_DOUBLE_VALUE)));
         }
     }
 
@@ -763,8 +753,6 @@ public final class ConfigReader {
         if (Boolean.parseBoolean(shouldSendFile)) {
             CONFIG_MAP.put(REMOTE_FILE_PATH, matchFilePath(props.getProperty(REMOTE_FILE_PATH)));
             CONFIG_MAP.put(REMOTE_RECEIVER_NAME, matchRegularString(props.getProperty(REMOTE_RECEIVER_NAME)));
-            CONFIG_MAP.put(REMOTE_RECEIVER_PASSWORD, matchRegularString(props.getProperty(REMOTE_RECEIVER_PASSWORD,
-                    "******")));
             CONFIG_MAP.put(REMOTE_NODE_IP, matchIp(props.getProperty(REMOTE_NODE_IP, "127.0.0.1")));
             CONFIG_MAP.put(REMOTE_NODE_PORT, matchPort(props.getProperty(REMOTE_NODE_PORT, "22")));
             CONFIG_MAP.put(REMOTE_RETRY_COUNT, matchNumber(props.getProperty(REMOTE_RETRY_COUNT, "1")));
@@ -776,48 +764,44 @@ public final class ConfigReader {
         CONFIG_MAP.put(SQL_REPLAY_MULTIPLE, matchNumber(props.getProperty(SQL_REPLAY_MULTIPLE, "1")));
         CONFIG_MAP.put(SQL_REPLAY_ONLY_QUERY, matchBoolean(props.getProperty(SQL_REPLAY_ONLY_QUERY)));
         CONFIG_MAP.put(SQL_REPLAY_MAX_POOL_SIZE, matchNumber(props.getProperty(SQL_REPLAY_MAX_POOL_SIZE, "1")));
-        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_RULE, SLOW_SQL_STRATEGY_LIST.contains(
-                props.getProperty(SQL_REPLAY_SLOW_SQL_RULE, "2")));
-        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_TIME_DIFF, matchNumber(
-                props.getProperty(SQL_REPLAY_SLOW_SQL_TIME_DIFF, "1000")));
-        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, matchNumber(
-                props.getProperty(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, "3000")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_RULE,
+            SLOW_SQL_STRATEGY_LIST.contains(props.getProperty(SQL_REPLAY_SLOW_SQL_RULE, "2")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_TIME_DIFF,
+            matchNumber(props.getProperty(SQL_REPLAY_SLOW_SQL_TIME_DIFF, "1000")));
+        CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD,
+            matchNumber(props.getProperty(SQL_REPLAY_SLOW_SQL_DURATION_THRESHOLD, "3000")));
         CONFIG_MAP.put(SQL_REPLAY_SLOW_SQL_CSV_DIR, matchFilePath(props.getProperty(SQL_REPLAY_SLOW_SQL_CSV_DIR)));
         CONFIG_MAP.put(SQL_REPLAY_SLOW_TOP_NUM, matchNumber(props.getProperty(SQL_REPLAY_SLOW_TOP_NUM, "5")));
         CONFIG_MAP.put(SQL_REPLAY_DRAW_THRESHOLD, matchNumber(props.getProperty(SQL_REPLAY_DRAW_THRESHOLD, "1000")));
-        CONFIG_MAP.put(SQL_REPLAY_SESSION_WHITE_LIST, matchSessionList(
-                props.getProperty(SQL_REPLAY_SESSION_WHITE_LIST, "[]")));
-        CONFIG_MAP.put(SQL_REPLAY_SESSION_BLACK_LIST, matchSessionList(
-                props.getProperty(SQL_REPLAY_SESSION_BLACK_LIST, "[]")));
+        CONFIG_MAP.put(SQL_REPLAY_SESSION_WHITE_LIST,
+            matchSessionList(props.getProperty(SQL_REPLAY_SESSION_WHITE_LIST, "[]")));
+        CONFIG_MAP.put(SQL_REPLAY_SESSION_BLACK_LIST,
+            matchSessionList(props.getProperty(SQL_REPLAY_SESSION_BLACK_LIST, "[]")));
         CONFIG_MAP.put(REPLAY_MAX_TIME, matchInt(props.getProperty(REPLAY_MAX_TIME, "0")));
-        CONFIG_MAP.put(SOURCE_TIME_INTERVAL_REPLAY, matchBoolean(
-                props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "false")));
-        CONFIG_MAP.put(COMPARE_SELECT_RESULT, matchBoolean(
-                props.getProperty(COMPARE_SELECT_RESULT, "false")));
+        CONFIG_MAP.put(SOURCE_TIME_INTERVAL_REPLAY,
+            matchBoolean(props.getProperty(SOURCE_TIME_INTERVAL_REPLAY, "false")));
+        CONFIG_MAP.put(COMPARE_SELECT_RESULT, matchBoolean(props.getProperty(COMPARE_SELECT_RESULT, "false")));
     }
 
     private static void putCompareResultConfig(Properties props) {
         CONFIG_MAP.put(SELECT_RESULT_PATH, matchFilePath(props.getProperty(SELECT_RESULT_PATH)));
-        CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(
-                props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
+        CONFIG_MAP.put(RESULT_FILE_NAME, matchRegularString(props.getProperty(RESULT_FILE_NAME, DEFAULT_RESULT_FILE)));
     }
 
     private static void putTargetDbConfig(Properties props) {
         CONFIG_MAP.put(SQL_REPLAY_DATABASE_IP, matchIps(props.getProperty(SQL_REPLAY_DATABASE_IP)));
         CONFIG_MAP.put(SQL_REPLAY_DATABASE_PORT, matchPorts(props.getProperty(SQL_REPLAY_DATABASE_PORT)));
-        CONFIG_MAP.put(SQL_REPLAY_DATABASE_SCHEMA_MAP, matchSchemaMap(
-                props.getProperty(SQL_REPLAY_DATABASE_SCHEMA_MAP)));
-        CONFIG_MAP.put(SQL_REPLAY_DATABASE_USERNAME, matchRegularString(
-                props.getProperty(SQL_REPLAY_DATABASE_USERNAME)));
-        CONFIG_MAP.put(SQL_REPLAY_DATABASE_PASSWORD, matchRegularString(
-                props.getProperty(SQL_REPLAY_DATABASE_PASSWORD)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_SCHEMA_MAP,
+            matchSchemaMap(props.getProperty(SQL_REPLAY_DATABASE_SCHEMA_MAP)));
+        CONFIG_MAP.put(SQL_REPLAY_DATABASE_USERNAME,
+            matchRegularString(props.getProperty(SQL_REPLAY_DATABASE_USERNAME)));
     }
 
     private static String checkSqlStorageMode(Properties props) {
         String sqlStorageMode = props.getProperty(SQL_STORAGE_MODE, JSON);
         if (!sqlStorageMode.equals(JSON) && !sqlStorageMode.equals(DB)) {
-            LOGGER.error("SQL storage mode is not supported, {} value must be one of the {}, {}.",
-                    SQL_STORAGE_MODE, JSON, DB);
+            LOGGER.error("SQL storage mode is not supported, {} value must be one of the {}, {}.", SQL_STORAGE_MODE,
+                JSON, DB);
             System.exit(-1);
         }
         return sqlStorageMode;
@@ -845,7 +829,6 @@ public final class ConfigReader {
             System.exit(-1);
         }
     }
-
 
     private static boolean matchBoolean(String dropTable) {
         if (dropTable == null) {
@@ -996,5 +979,24 @@ public final class ConfigReader {
 
     private static Boolean matchDbType(String databaseType) {
         return DatabaseTypeEnum.isInclude(databaseType);
+    }
+
+    /**
+     * getPassword
+     * @param description param description
+     * @return String
+     */
+    public static String getPassword(String configPwd, String description) {
+        if (matchRegularString(configPwd)) {
+            return configPwd;
+        }
+        try (Terminal terminal = TerminalBuilder.builder().jna(true).build()) {
+            LineReader reader = LineReaderBuilder.builder().terminal(terminal).build();
+            String password = reader.readLine(description, '\0');
+            return matchRegularString(password) ? password : "******";
+        } catch (IOException e) {
+            LOGGER.error("obtain password has occurred an exception, error message:{}", e.getMessage());
+            return "******";
+        }
     }
 }

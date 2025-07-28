@@ -16,6 +16,7 @@
 package org.opengauss.tool.config;
 
 import lombok.Data;
+
 import org.opengauss.tool.utils.ConfigReader;
 
 import java.util.Properties;
@@ -46,7 +47,8 @@ public class DatabaseConfig {
         this.dbPort = props.getProperty(ConfigReader.SQL_DATABASE_PORT);
         this.username = props.getProperty(ConfigReader.SQL_DATABASE_USERNAME);
         this.dbName = props.getProperty(ConfigReader.SQL_DATABASE_NAME);
-        this.password = props.getProperty(ConfigReader.SQL_DATABASE_PASSWORD);
+        this.password = ConfigReader.getPassword(props.getProperty(ConfigReader.SQL_DATABASE_PASSWORD),
+            "Please enter Database user password for SQL storage (sql.database.password):");
         this.tableName = props.getProperty(ConfigReader.SQL_TABLE_NAME, ConfigReader.DEFAULT_SQL_TABLE);
     }
 
@@ -60,7 +62,8 @@ public class DatabaseConfig {
         this.dbPort = props.getProperty(ConfigReader.GENERAL_DATABASE_PORT, "3306");
         this.username = props.getProperty(ConfigReader.GENERAL_DATABASE_USERNAME);
         this.dbName = "mysql";
-        this.password = props.getProperty(ConfigReader.GENERAL_DATABASE_PASSWORD);
+        this.password = ConfigReader.getPassword(props.getProperty(ConfigReader.GENERAL_DATABASE_PASSWORD),
+            "Please enter the source database password used for recording (general.database.password):");
         this.tableName = "general_log";
     }
 }
