@@ -16,6 +16,7 @@
 package org.opengauss.tool.config;
 
 import lombok.Data;
+
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.FileOperator;
 
@@ -44,7 +45,9 @@ public class RemoteConfig {
     public void load(Properties props) {
         this.remoteFilePath = FileOperator.formatFilePath(props.getProperty(ConfigReader.REMOTE_FILE_PATH));
         this.remoteReceiverName = props.getProperty(ConfigReader.REMOTE_RECEIVER_NAME, "root");
-        this.remoteReceiverPassword = props.getProperty(ConfigReader.REMOTE_RECEIVER_PASSWORD, "******");
+        this.remoteReceiverPassword = ConfigReader.getPassword(
+            props.getProperty(ConfigReader.REMOTE_RECEIVER_PASSWORD),
+            "Please enter the remote host user's password (remote.receiver.password):");
         this.remoteNodeIp = props.getProperty(ConfigReader.REMOTE_NODE_IP, "127.0.0.1");
         this.remoteNodePort = Integer.parseInt(props.getProperty(ConfigReader.REMOTE_NODE_PORT, "22"));
         this.remoteRetryCount = Integer.parseInt(props.getProperty(ConfigReader.REMOTE_RETRY_COUNT, "1"));
