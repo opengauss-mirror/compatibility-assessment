@@ -32,13 +32,13 @@ public abstract class CollectSqlParser implements SqlParser {
     /**
      * collect sql from which db in mysql
      */
-    protected static String dbname = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.MYSQL
+    protected static final String dbname = AssessmentInfoManager.getInstance().getProperty(AssessmentInfoChecker.MYSQL
             + "." + AssessmentInfoChecker.DBNAME);
 
     /**
      * get output sql path
      */
-    protected static String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();
+    protected static final String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();
 
     /**
      * get sql statement by collecting

@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Description: base class for all type files parser
@@ -73,7 +74,7 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
     /**
      * sql output dir path
      */
-    protected static String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();
+    protected static final String outputDir = AssessmentInfoManager.getInstance().getSqlOutDir();
     private static final Logger LOGGER = LoggerFactory.getLogger(FileInputSqlParser.class);
     private static final String DOTS = "\\.";
     private static final String BAR = "-";
@@ -111,9 +112,9 @@ public abstract class FileInputSqlParser implements SqlParser, Runnable {
         File newFile = null;
         try {
             String fileName = inputFile.getCanonicalPath().substring(1)
-                    .replaceAll(File.separator, "_");
+                    .replaceAll(Pattern.quote(File.separator), "_");
             String newSuffix = BAR + codeToExtension.get(fileTypeCode);
-            if (StrategyChoice.getStrategy() == StrategyChoice.STATEGY_JUDGE_KEYWORD) {
+            if (StrategyChoice.getStrategy().equals(StrategyChoice.STATEGY_JUDGE_KEYWORD)) {
                 newSuffix += BAR + StrategyChoice.STATEGY_JUDGE_KEYWORD;
             }
 

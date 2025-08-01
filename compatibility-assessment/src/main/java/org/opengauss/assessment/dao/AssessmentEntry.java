@@ -44,6 +44,7 @@ import java.io.BufferedReader;
 import java.io.StringReader;
 import java.io.BufferedWriter;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -492,7 +493,7 @@ public class AssessmentEntry {
         }
 
         File file = new File(filename);
-        try (BufferedReader bufReader = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader bufReader = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8))) {
             context = filterAndCheckXmlContext(bufReader, tag, id);
             if (context.length() > 0) {
                 context = "<xmp>" + context + "</xmp>";
