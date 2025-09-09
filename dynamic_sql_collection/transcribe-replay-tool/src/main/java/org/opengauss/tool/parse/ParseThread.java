@@ -577,8 +577,15 @@ public class ParseThread extends Thread {
             return;
         }
         SqlInfo pbeSql = preparedSqlMap.get(statementId);
+        if (pbeSql.getParaNum() == 0) {
+            commitSql(pbeSql, packet);
+            return;
+        }
         boolean isNewParas = false;
         int start = 14;
+        int offset = 0;
+        offset = lenEncoded(data, start);
+        start += offset;
         if (pbeSql.getParaNum() > 0) {
             // NULL bitmap length
             start += (pbeSql.getParaNum() + 7) / 8;
@@ -588,11 +595,11 @@ public class ParseThread extends Thread {
         parameterList.clear();
         if (isNewParas) {
             pbeSql.getTypeList().clear();
-            for (int i = start + 1; i < start + pbeSql.getParaNum() * 2 + 1; i += 2) {
+            for (int i = start + 1; i < start + pbeSql.getParaNum() * (2 + offset) + 1; i += 2 + offset) {
                 // parameter type
                 pbeSql.getTypeList().add(CommonParser.parseByLittleEndian(data, i, i + 1));
             }
-            start += 1 + pbeSql.getParaNum() * 2;
+            start += 1 + pbeSql.getParaNum() * (2 + offset);
         } else {
             start += 1;
         }
@@ -609,6 +616,10 @@ public class ParseThread extends Thread {
             start += preparedValue.getOffset();
             index++;
         }
+        commitSql(pbeSql, packet);
+    }
+
+    private void commitSql(SqlInfo pbeSql, PacketData packet) {
         SqlInfo sql = pbeSql.clone();
         sql.setSessionId(sessionId);
         sql.setSqlId(packet.getPacketId());
@@ -617,6 +628,11 @@ public class ParseThread extends Thread {
         incompleteSql = sql;
         previousSql = sql;
         pbeSql.getParameterList().clear();
+    }
+
+    private int lenEncoded(byte[] data, int start) {
+        int len = data[start] & 0xff;
+        return len > 0 ? 1 : 0;
     }
 
     private void resetStatement(PacketData packet) {
