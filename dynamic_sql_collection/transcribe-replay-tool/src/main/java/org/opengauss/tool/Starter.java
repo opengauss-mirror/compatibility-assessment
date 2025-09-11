@@ -17,6 +17,8 @@ package org.opengauss.tool;
 
 import org.opengauss.tool.dispatcher.TaskDispatcher;
 import org.opengauss.tool.utils.ConfigReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +30,7 @@ import java.util.Map;
  * @since : 2024/05/17
  */
 public class Starter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Starter.class);
     private static Map<String, String> commandMap = new HashMap<>();
 
     /**
@@ -36,6 +39,10 @@ public class Starter {
      * @param args args String[], include command type and configure file path
      */
     public static void main(String[] args) {
+        if (args.length % 2 != 0) {
+            LOGGER.error("input error, please check parameters.");
+            return;
+        }
         for (int i = 0; i < args.length; i += 2) {
             commandMap.put(args[i], args[i + 1]);
         }

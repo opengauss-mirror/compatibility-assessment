@@ -4,7 +4,7 @@
 <log4j:configuration debug="true">
     <appender name="log.console" class="org.apache.log4j.ConsoleAppender">
         <layout class="org.apache.log4j.PatternLayout">
-            <param name="ConversionPattern" value="%d{HH:mm:ss,SS} %-5p (%C{1}:%M) - %m%n"/>
+            <param name="ConversionPattern" value="%replace{%d{HH:mm:ss,SS} %-5p (%C{1}:%M) - %m%n}{[\r\n]}{%replace{$0}{\r}{\\r}}{%replace{$0}{\n}{\\n}}"/>
         </layout>
         <filter class="org.apache.log4j.varia.LevelRangeFilter">
             <param name="levelMin" value="INFO" />
@@ -17,7 +17,7 @@
         <param name="Append" value="true"/>
         <param name="DatePattern" value="yyyy-MM-dd"/>
         <layout class="org.apache.log4j.PatternLayout">
-            <param name="ConversionPattern" value="%d{HH:mm:ss,SS} %-5p (%C{1}:%M) - %m%n"/>
+            <param name="ConversionPattern" value="%replace{%d{HH:mm:ss,SS} %-5p (%C{1}:%M) - %m%n}{[\r\n]}{%replace{$0}{\r}{\\r}}{%replace{$0}{\n}{\\n}}"/>
         </layout>
         <filter class="org.apache.log4j.varia.LevelRangeFilter">
             <param name="levelMin" value="INFO" />
