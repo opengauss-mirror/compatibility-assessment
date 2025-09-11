@@ -15,10 +15,13 @@
 
 package org.opengauss.tool.replay.operator;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.JSONObject;
+
 import org.apache.commons.lang3.StringUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.factory.ReplayConnectionFactory;
 import org.opengauss.tool.replay.model.ExecuteResponse;
@@ -331,11 +334,11 @@ public class ReplaySqlOperator {
         ResultModel resultModel = resultMap.get(sqlModel.getPacketId());
         List<List<String>> sourceResult = new ArrayList<>();
         JSONArray array = resultModel.getData();
-        for (int i = 0; i < array.length(); i++) {
+        for (int i = 0; i < array.size(); i++) {
             JSONArray rowArr = array.getJSONArray(i);
             List<String> row = new ArrayList<>();
-            for (int j = 0; j < rowArr.length(); j++) {
-                row.add(rowArr.get(j).toString());
+            for (Object o : rowArr) {
+                row.add(o.toString());
             }
             sourceResult.add(row);
         }
@@ -415,7 +418,7 @@ public class ReplaySqlOperator {
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (StringUtils.isNotEmpty(line)) {
-                    JSONObject jsonObject = new JSONObject(line);
+                    JSONObject jsonObject = JSON.parseObject(line);
                     ResultModel resultModel = new ResultModel(jsonObject);
                     resultModels.add(resultModel);
                 }

@@ -15,8 +15,8 @@
 
 package org.opengauss.tool.parse.object;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -95,7 +95,7 @@ public class SqlInfo {
     private void init() {
         this.parameterList = new ArrayList<>();
         this.typeList = new ArrayList<>();
-        this.json = new JSONObject(true);
+        this.json = new JSONObject();
     }
 
     /**
@@ -234,7 +234,7 @@ public class SqlInfo {
                 .fluentPut("sql", sql);
         JSONArray jsonArray = new JSONArray();
         for (PreparedValue param : parameterList) {
-            jsonArray.fluentAdd(new JSONObject(true).fluentPut(param.getType(), param.getValue()));
+            jsonArray.fluentAdd(new JSONObject().fluentPut(param.getType(), param.getValue()));
         }
         json.fluentPut("parameters", jsonArray);
         if (isIncludeExecuteDuration) {

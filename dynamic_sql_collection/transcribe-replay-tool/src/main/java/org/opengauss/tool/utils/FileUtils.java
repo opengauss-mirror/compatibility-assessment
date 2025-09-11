@@ -15,9 +15,11 @@
 
 package org.opengauss.tool.utils;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONException;
+import com.alibaba.fastjson2.JSONObject;
+
 import org.apache.commons.lang3.StringUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.opengauss.tool.Starter;
 import org.opengauss.tool.config.replay.ReplayConfig;
 import org.opengauss.tool.replay.model.SqlModel;
@@ -88,7 +90,7 @@ public final class FileUtils {
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
                 if (StringUtils.isNotEmpty(line)) {
-                    JSONObject jsonObject = new JSONObject(line);
+                    JSONObject jsonObject = JSON.parseObject(line);
                     if (jsonObject.get("sql").equals("finished")) {
                         break;
                     }

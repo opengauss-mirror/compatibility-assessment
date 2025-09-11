@@ -15,7 +15,7 @@
 
 package org.opengauss.tool.utils;
 
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson2.JSON;
 
 import org.opengauss.tool.replay.model.FailSqlModel;
 import org.slf4j.Logger;
@@ -74,7 +74,7 @@ public class FailSqlFileUtils {
             raf.seek(raf.length());
             writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
                 raf.getFD()), StandardCharsets.UTF_8));
-            String jsonString = JSON.toJSONString(sqlModel, true);
+            String jsonString = JSON.toJSONString(sqlModel);
             writer.write(jsonString);
             writer.write(OBJECT_SEPARATOR);
             writer.newLine();
