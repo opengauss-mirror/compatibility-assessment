@@ -15,11 +15,12 @@
 
 package org.opengauss.tool.replay.model;
 
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 /**
  * ResultModel
@@ -38,10 +39,10 @@ public class ResultModel {
     private String sql;
 
     public ResultModel(JSONObject jsonObject) {
-        this.packetId = jsonObject.getInt("packetId");
-        this.sqlPacketId = jsonObject.getInt("sqlPacketId");
+        this.packetId = jsonObject.getIntValue("packetId");
+        this.sqlPacketId = jsonObject.getIntValue("sqlPacketId");
         this.data = jsonObject.getJSONArray("data");
-        this.rowCount = jsonObject.getInt("rowCount");
+        this.rowCount = jsonObject.getIntValue("rowCount");
         this.sql = jsonObject.getString("sql");
     }
 }

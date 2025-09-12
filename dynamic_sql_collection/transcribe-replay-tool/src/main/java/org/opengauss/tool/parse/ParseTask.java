@@ -15,7 +15,7 @@
 
 package org.opengauss.tool.parse;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 import org.opengauss.tool.config.parse.ParseConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
 import org.opengauss.tool.parse.object.DatabaseTypeEnum;

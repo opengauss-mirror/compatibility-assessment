@@ -15,7 +15,7 @@
 
 package org.opengauss.tool.parse.object;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 import lombok.Data;
 
 /**
@@ -35,7 +35,7 @@ public class SessionInfo {
         this.sessionId = sessionId;
         this.username = username;
         this.schema = schema;
-        this.json = new JSONObject(true);
+        this.json = new JSONObject();
     }
 
     @Override
