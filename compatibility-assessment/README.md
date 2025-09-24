@@ -93,7 +93,7 @@ sh start.sh -d [file|collect] -c assessment.properties -o report.html
   #sql类型， slow：评估慢sql; general：评估全量sql。该参数仅需要在assessmenttype为sql或all时指定，用于表示需进行评估的sql语句类型
   sqltype = slow
   
-  mysql.password = mysql123 
+  mysql.password = 
   mysql.user = mysql
   mysql.port = 3389
   mysql.host = 127.0.0.1
@@ -101,7 +101,7 @@ sh start.sh -d [file|collect] -c assessment.properties -o report.html
   mysql.dbname = test
   
   opengauss.user = opengauss
-  opengauss.password = opengauss123
+  opengauss.password = 
   opengauss.port = 5432
   opengauss.host = 127.0.0.1
   opengauss.dbname = assessment_1688719386596
