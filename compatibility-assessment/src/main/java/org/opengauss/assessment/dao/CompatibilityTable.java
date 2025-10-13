@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -107,7 +108,7 @@ public class CompatibilityTable {
         strHeader += "<div><div class=\"content-table" + contentTableCount + "\" width=100%>";
         contentTableCount++ ;
 
-        try (FileWriter fileWriter = new FileWriter(fd, true)) {
+        try (FileWriter fileWriter = new FileWriter(fd, StandardCharsets.UTF_8, true)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
                 bufferedWriter.write(strHeader);
                 long index = 0L;
@@ -163,7 +164,7 @@ public class CompatibilityTable {
             + "</td></tr>" + System.lineSeparator();
         chartsCount++ ;
         AssessmentEntry.increTotalSql(this.sqlCompatibilities.size());
-        try (FileWriter fileWriter = new FileWriter(fd, true)) {
+        try (FileWriter fileWriter = new FileWriter(fd, StandardCharsets.UTF_8, true)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
                 bufferedWriter.write(strCharts);
             }
@@ -240,7 +241,7 @@ public class CompatibilityTable {
     }
 
     private boolean canWriteData(String str) {
-        try (FileWriter fileWriter = new FileWriter(fd)) {
+        try (FileWriter fileWriter = new FileWriter(fd, StandardCharsets.UTF_8)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
                 bufferedWriter.write(str);
             }
@@ -257,7 +258,7 @@ public class CompatibilityTable {
      * @return boolean
      */
     public boolean generateReportEnd() {
-        try (FileWriter fileWriter = new FileWriter(fd, true)) {
+        try (FileWriter fileWriter = new FileWriter(fd, StandardCharsets.UTF_8, true)) {
             try (BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
                 bufferedWriter.write(new CompatibilityTableScript().getScript());
             }

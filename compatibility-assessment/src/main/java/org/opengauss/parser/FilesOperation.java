@@ -23,9 +23,9 @@ import java.io.File;
 import java.io.BufferedWriter;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import static org.opengauss.parser.sqlparser.fileinputsqlparser.FileInputSqlParser.EMPTY_STR;
 import static org.opengauss.parser.sqlparser.fileinputsqlparser.FileInputSqlParser.UNICODE_FEFF;
@@ -48,8 +48,8 @@ public class FilesOperation {
     public static BufferedReader getBufferedReader(File file) {
         BufferedReader bufReader = null;
         try {
-            bufReader = new BufferedReader(new FileReader(file));
-        } catch (FileNotFoundException exp) {
+            bufReader = new BufferedReader(new FileReader(file, StandardCharsets.UTF_8));
+        } catch (IOException exp) {
             LOGGER.error("FileNotFoundException occured! file: " + file.getAbsolutePath());
         }
         return bufReader;
@@ -65,7 +65,7 @@ public class FilesOperation {
     public static BufferedWriter getBufferedWriter(File file, boolean isAppend) {
         BufferedWriter bufWriter = null;
         try {
-            bufWriter = new BufferedWriter(new FileWriter(file, isAppend));
+            bufWriter = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8, isAppend));
         } catch (IOException exp) {
             LOGGER.error("IOException ouucred! file: " + file.getAbsolutePath(), exp.getMessage());
         }

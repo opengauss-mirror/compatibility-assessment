@@ -115,7 +115,7 @@ public class InCompatibilityFilter {
         int index;
         if ((index = errInfo.indexOf("位置：")) != -1) {
             index += 3;
-            pos = Integer.valueOf(errInfo.substring(index));
+            pos = Integer.parseInt(errInfo.substring(index));
         }
         return pos;
     }
