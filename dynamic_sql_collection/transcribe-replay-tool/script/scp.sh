@@ -6,7 +6,7 @@ target_path=""
 file_name=""
 username=""
 ip=""
-readonly JAR_NAME="transcribe-replay-tool-7.0.0-RC2.jar"
+readonly JAR_NAME="transcribe-replay-tool-7.0.0-RC3.jar"
 
 escape_shell_arg() {
     local arg="$1"
