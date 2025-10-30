@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # 初始化变量
+version=7.0.0-RC3
 source_path=""
 target_path=""
 file_name=""
 username=""
 ip=""
-readonly JAR_NAME="transcribe-replay-tool-7.0.0-RC3.jar"
+readonly JAR_NAME="transcribe-replay-tool-${version}.jar"
 
 escape_shell_arg() {
     local arg="$1"
