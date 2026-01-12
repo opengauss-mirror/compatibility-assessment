@@ -14,6 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <logback.version>1.5.24</logback.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
+        <hutool-all.version>5.8.40</hutool-all.version>
     </properties>
     <dependencies>
         <!-- 添加 ASM 依赖 -->
@@ -55,7 +56,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.20</version>
+            <version>${hutool-all.version}</version>
         </dependency>
     </dependencies>
     <build>
