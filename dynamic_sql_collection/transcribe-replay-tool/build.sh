@@ -1,5 +1,5 @@
 #!/bin/bash
-version=7.0.0-RC3
+version=7.0.0
 mvn clean package -f ../agent/pom.xml
 mvn clean package -f ../attach/pom.xml
 mvn clean package

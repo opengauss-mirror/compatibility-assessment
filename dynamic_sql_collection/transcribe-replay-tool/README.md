@@ -79,7 +79,7 @@ SQL流量录制回放工具，可以录制源端数据库客户端的业务sql�
 - 安装包获取
 ~~~
 # 每日构建
-wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/transcribe-replay-tool-7.0.0-RC3.tar.gz
+wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/latest/tools/openGauss-TranscribeReplay-7.0.0.tar.gz 
 # 正式发布包
 wget https://opengauss.obs.cn-south-1.myhuaweicloud.com/7.0.0-RC2/tools/transcribe-replay-tool-7.0.0-RC2.tar.gz
 ~~~

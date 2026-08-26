@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 初始化变量
-version=7.0.0-RC3
+version=7.0.0
 source_path=""
 target_path=""
 file_name=""
