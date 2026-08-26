@@ -1,5 +1,5 @@
 #!/bin/bash
-version=7.0.0-RC3
+version=7.0.0
 while true; do
     # 检查transcribe-replay-tool-${version}.jar进程是否存在
     if pgrep -f "transcribe-replay-tool-${version}.jar" > /dev/null; then
