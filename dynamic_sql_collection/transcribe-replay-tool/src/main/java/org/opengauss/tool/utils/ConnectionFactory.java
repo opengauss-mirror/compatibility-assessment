@@ -47,14 +47,17 @@ public final class ConnectionFactory {
 
     private static Connection createMysqlConnection(DatabaseConfig config) {
         String url = "jdbc:mysql://" + config.getDbIp() + ":" + config.getDbPort()
-                + "/" + config.getDbName() + "?useSSL=false&allowPublicKeyRetrieval=true&"
-                + "rewriteBatchedStatements=true&allowLoadLocalInfile=true&serverTimezone=UTC&";
+                + "/" + config.getDbName()
+                + "?useSSL=false&allowPublicKeyRetrieval=true&"
+                + "rewriteBatchedStatements=true&allowLoadLocalInfile=true&serverTimezone=Asia/Shanghai";
         Connection connection = null;
         try {
             Class.forName(MYSQL_JDBC_DRIVER);
             connection = DriverManager.getConnection(url, config.getUsername(), config.getPassword());
-        } catch (ClassNotFoundException | SQLException exp) {
-            LOGGER.error("Create MySQL connection failed, error message is: {}", exp.getMessage());
+        } catch (ClassNotFoundException e) {
+            LOGGER.error("MySQL JDBC Driver not found!", e);
+        } catch (SQLException e) {
+            LOGGER.error("Create MySQL connection failed, error message is: {}", e.getMessage());
         }
         return connection;
     }
