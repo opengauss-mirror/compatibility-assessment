@@ -22,8 +22,10 @@ import com.jcraft.jsch.Session;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.SftpException;
 
+import org.opengauss.tool.config.DatabaseConfig;
 import org.opengauss.tool.config.transcribe.TranscribeConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
+import org.opengauss.tool.parse.object.SessionInfo;
 import org.opengauss.tool.utils.ConfigReader;
 import org.opengauss.tool.utils.ConnectionFactory;
 import org.opengauss.tool.utils.DatabaseOperator;
@@ -38,13 +40,19 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -144,6 +152,7 @@ public class TranscribeTask extends WorkTask {
 
     @Override
     public void start() {
+        initPreviousSessionInfo();
         if (config.shouldCheckResource()) {
             monitorDisk();
             monitorMemory();
@@ -159,6 +168,84 @@ public class TranscribeTask extends WorkTask {
         if (config.shouldSendFile()) {
             threadPool.execute(this::arrangeFiles);
         }
+    }
+
+    private void initPreviousSessionInfo() {
+        if (!ConfigReader.matchIp(config.getSourceDbIp())
+                || !ConfigReader.matchRegularString(config.getSourceDbUsername(), config.getSourceDbPassword())) {
+            return;
+        }
+        try {
+            if ("mysql".equalsIgnoreCase(config.getSourceDbType())) {
+                storageMysqlSessionInfo();
+            } else {
+                storageOgSessionInfo();
+            }
+        } catch (Exception e) {
+            LOGGER.info("Won't initialize previous session info");
+        }
+    }
+
+    private void storageOgSessionInfo() {
+        DatabaseConfig ogConfig = new DatabaseConfig();
+        ogConfig.setUsername(config.getSourceDbUsername());
+        ogConfig.setPassword(config.getSourceDbPassword());
+        ogConfig.setDbIp(config.getSourceDbIp());
+        ogConfig.setDbPort(String.valueOf(config.getCapturePort()));
+        ogConfig.setDbName("postgres");
+        String query = "select usename, client_addr, client_port, datname from pg_stat_activity";
+        queryAndStorage(ogConfig, "opengauss", query);
+    }
+
+    private void storageMysqlSessionInfo() {
+        DatabaseConfig mysqlConfig = new DatabaseConfig();
+        mysqlConfig.setUsername(config.getSourceDbUsername());
+        mysqlConfig.setPassword(config.getSourceDbPassword());
+        mysqlConfig.setDbIp(config.getSourceDbIp());
+        mysqlConfig.setDbPort(String.valueOf(config.getCapturePort()));
+        mysqlConfig.setDbName("mysql");
+        String query = "SELECT USER, SUBSTRING_INDEX(HOST, ':', 1) AS Client_IP, SUBSTRING_INDEX(HOST, ':', -1)"
+                + " AS Client_Port, DB FROM information_schema.PROCESSLIST";
+        queryAndStorage(mysqlConfig, "mysql", query);
+    }
+
+    private void queryAndStorage(DatabaseConfig dbConfig, String dbType, String query) {
+        try(Connection connection = ConnectionFactory.createConnection(dbConfig, dbType);
+            Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery(query);
+            Set<SessionInfo> previousSessionInfos = new HashSet<>();
+            while (rs.next()) {
+                String clientUser = rs.getString(1);
+                String clientIp  = rs.getString(2);
+                String clientPort = rs.getString(3);
+                String dbName = rs.getString(4);
+                if (isValidSessionInfo(clientUser, clientIp, clientPort, dbName)) {
+                    SessionInfo sessionInfo = new SessionInfo(clientIp + ":" + clientPort, clientUser, dbName);
+                    previousSessionInfos.add(sessionInfo);
+                }
+            }
+            if (previousSessionInfos.isEmpty()) {
+                return;
+            }
+            String targetPath = config.getFileConfig().getFilePath().endsWith(File.separator)
+                    ? config.getFileConfig().getFilePath() : config.getFileConfig().getFilePath() + File.separator;
+            String fullPath = targetPath + "previous-session-mapping.json";
+            FileOperator.removeIfExist(targetPath + "previous-session-mapping.json");
+            FileOperator.writeStringToFile(previousSessionInfos, fullPath);
+            LOGGER.info("Previous session information stored in {}", fullPath);
+        } catch (SQLException e) {
+            LOGGER.warn("Failed to query database server session info");
+        }
+    }
+
+    private boolean isValidSessionInfo(String... sessionInfos) {
+        List<String> sessionInfoList = new ArrayList<>(Arrays.asList(sessionInfos));
+        for (String sessionInfo : sessionInfoList) {
+            if (sessionInfo == null || sessionInfo.trim().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

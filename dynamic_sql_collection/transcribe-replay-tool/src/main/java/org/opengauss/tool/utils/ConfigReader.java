@@ -40,8 +40,9 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Properties;
 
 /**
@@ -143,6 +144,12 @@ public final class ConfigReader {
      * parse
      */
     public static final String PARSE = "parse";
+
+    /**
+     * preparse
+     */
+    public static final String PREPARSE = "preparse";
+
     // parse
     /**
      * sql file path
@@ -194,6 +201,16 @@ public final class ConfigReader {
      * tcpdump network interface
      */
     public static final String TCPDUMP_NETWORK_INTERFACE = "tcpdump.network.interface";
+
+    /**
+     * tcpdump database username
+     */
+    public static final String TCPDUMP_DATABASE_USERNAME = "tcpdump.database.username";
+
+    /**
+     * tcpdump database password
+     */
+    public static final String TCPDUMP_DATABASE_PASSWORD = "tcpdump.database.password";
 
     /**
      * tcpdump database port
@@ -717,9 +734,16 @@ public final class ConfigReader {
         CONFIG_MAP.put(TCPDUMP_CAPTURE_DURATION, matchNumber(props.getProperty(TCPDUMP_CAPTURE_DURATION, "1")));
         CONFIG_MAP.put(TCPDUMP_FILE_PATH, matchFilePath(
             props.getProperty(TCPDUMP_FILE_PATH, FileOperator.CURRENT_PATH + DEFAULT_SQL_FILES + File.separator)));
-        CONFIG_MAP.put(TCPDUMP_FILE_NAME, matchRegularString(props.getProperty(TCPDUMP_FILE_NAME, "sql-file")));
+        CONFIG_MAP.put(TCPDUMP_FILE_NAME, matchRegularString(props.getProperty(TCPDUMP_FILE_NAME, "tcpdump-file")));
         CONFIG_MAP.put(TCPDUMP_FILE_SIZE, matchNumber(props.getProperty(TCPDUMP_FILE_SIZE, "10")));
         CONFIG_MAP.put(FILE_COUNT_LIMIT, matchNumber(props.getProperty(FILE_COUNT_LIMIT, "100")));
+        CONFIG_MAP.put(TCPDUMP_DATABASE_TYPE, matchSourceDb(props.getProperty(TCPDUMP_DATABASE_TYPE,
+                "mysql")));
+        CONFIG_MAP.put(TCPDUMP_DATABASE_IP, matchIp(props.getProperty(TCPDUMP_DATABASE_IP, "127.0.0.1")));
+        CONFIG_MAP.put(TCPDUMP_DATABASE_USERNAME, matchRegularString(props.getProperty(TCPDUMP_DATABASE_USERNAME,
+                "username")));
+        CONFIG_MAP.put(TCPDUMP_DATABASE_PASSWORD, matchRegularString(props.getProperty(TCPDUMP_DATABASE_PASSWORD,
+                "******")));
     }
 
     private static void putSystemConfig(Properties props) {
@@ -837,8 +861,21 @@ public final class ConfigReader {
         return "true".equalsIgnoreCase(dropTable) || "false".equalsIgnoreCase(dropTable);
     }
 
-    private static boolean matchRegularString(String username) {
-        return username != null && !username.trim().isEmpty();
+    /**
+     * Is String valid
+     *
+     * @param target String the target string
+     *
+     * @return Is String valid
+     */
+    public static boolean matchRegularString(String... target) {
+        List<String> strList = new ArrayList<>(Arrays.asList(target));
+        for (String str : strList) {
+            if (str == null || str.trim().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Boolean matchDouble(String decimal) {
@@ -869,7 +906,14 @@ public final class ConfigReader {
         return value.matches(regex);
     }
 
-    private static boolean matchIp(String ip) {
+    /**
+     * Check the ip is valid
+     *
+     * @param ip ipv6 or ipv4
+     *
+     * @return is it valid
+     */
+    public static boolean matchIp(String ip) {
         try {
             InetAddress.getByName(ip);
             return true;
@@ -998,5 +1042,9 @@ public final class ConfigReader {
             LOGGER.error("obtain password has occurred an exception, error message:{}", e.getMessage());
             return "******";
         }
+    }
+
+    private static Boolean matchSourceDb(String dbType) {
+        return "opengauss".equalsIgnoreCase(dbType) || "mysql".equalsIgnoreCase(dbType);
     }
 }

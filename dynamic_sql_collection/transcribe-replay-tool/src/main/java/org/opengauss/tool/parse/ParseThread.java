@@ -112,8 +112,17 @@ public class ParseThread extends Thread {
      * is parse packet finished
      */
     protected AtomicBoolean isParseFinished;
+
+    /**
+     * Is distribute finished
+     */
+    protected AtomicBoolean isDistributeFinished;
+
+    /**
+     * The finial packet id of current session
+     */
+    protected long endPacketId = -1L;
     private Map<Integer, SqlInfo> preparedSqlMap;
-    private AtomicBoolean isDistributeFinished;
     private List<Integer> preparedCloseStatements;
     private Set<Long> selectPacketIds = new HashSet<>();
 
@@ -162,7 +171,8 @@ public class ParseThread extends Thread {
                 } else {
                     LOGGER.debug("Parsing SQL from {}.", sessionId);
                 }
-                if (previousSql == null || !previousSql.isQuery() || !resultFileConfig.isParseResult()) {
+                if (previousSql == null || !previousSql.isQuery() || resultFileConfig == null
+                        || !resultFileConfig.isParseResult()) {
                     continue;
                 }
             } else {
@@ -239,6 +249,10 @@ public class ParseThread extends Thread {
                 quit(packet);
                 return true;
             }
+        }
+        if (packet.getPacketId() == endPacketId) {
+            isDistributeFinished.set(true);
+            return false;
         }
         return false;
     }

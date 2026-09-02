@@ -153,12 +153,12 @@ mvn clean package
 ## 工具使用
 - 启动命令
 ~~~
-java -jar transcribe-replay-tool-${version}.jar -t [transcribe|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
+java -jar transcribe-replay-tool-${version}.jar -t [transcribe|preparse|parse|replay] -f [transcribe.properties|parse.properties|replay.properties]
 ~~~
 
 - 参数介绍
 ~~~
--t: 命令类型，可选transcribe/parse/replay，transcribe表示开启流量录制，parse表示开启解析网络数据包文件，replay表示开启sql回放
+-t: 命令类型，可选transcribe/preparse/parse/replay，transcribe表示开启流量录制，preparse表示对网络数据包文件进行预解析，通过预解析可以获取每个会话的最后一条报文，parse表示开启解析网络数据包文件，preparse和parse使用同一个配置文件，解析之前先进行预解析能够提高解析效率，replay表示开启sql回放
 -f: 配置文件路径，根据命令类型分别可选录制端、解析端与回放端的配置文件路径，当采取attach方式录制时，只支持绝对路径
 ~~~
 
@@ -191,6 +191,14 @@ tcpdump.file.path=/***/***/***
 tcpdump.file.name=tcpdump-file
 # 单个网络文件包大小限制，int类型，默认值: 10，单位: MB
 tcpdump.file.size=10
+# tcpdump database info.
+# 如果开启录制前源数据库已经存在历史会话，可通过配置下面的源数据库信息来查询历史会话信息，有了历史会话信息后，解析阶段就能解析历史会话的SQL
+# 源端数据库类型，目前支持MySQL和openGauss
+#tcpdump.database.type=mysql
+#tcpdump.database.username=username
+#tcpdump.database.password=******
+#tcpdump.database.ip=x.x.x.x
+
 # max.cpu.threshold: 系统CPU使用率阈值，取值在0~1之间，当系统CPU使用率超过该值时，工具会停止录制，double类型，默认值: 0.85
 max.cpu.threshold=0.85
 # max.memory.threshold: 系统内存使用率阈值，取值在0~1之间，当系统内存使用率超过该值时，工具会停止录制，double类型，默认值: 0.85

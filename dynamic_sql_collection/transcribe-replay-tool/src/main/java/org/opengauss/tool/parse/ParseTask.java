@@ -15,6 +15,7 @@
 
 package org.opengauss.tool.parse;
 
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import org.opengauss.tool.config.parse.ParseConfig;
 import org.opengauss.tool.dispatcher.WorkTask;
@@ -34,20 +35,25 @@ import org.opengauss.tool.utils.ThreadExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -74,8 +80,24 @@ public class ParseTask extends WorkTask {
     private static final int BYTE_CONVERSION_RATIO = 1024 * 1024;
     private static final String PROCESS_FILE_NAME = "parse-process.txt";
 
-    private final ParseConfig config;
-    private final ThreadPoolExecutor threadPool;
+    /**
+     * private final ThreadPoolExecutor threadPool;
+     * Configuration used to parse packet
+     */
+    protected final ParseConfig config;
+    /**
+     * Parse task thread pool
+     */
+    protected final ThreadPoolExecutor threadPool;
+    /**
+     * The mapping between the session identifier and the identifier of the last message in that session is obtained
+     * through a pre-parsing operation.
+     */
+    protected final Map<String, Long> sessionEndPacketMapping = new HashMap<>();
+    /**
+     * Used to record the connection information before recording starts.
+     */
+    protected final Map<String, SessionInfo> previousSessionMapping = new HashMap<>();
     private final BlockingQueue<OriginPacket> packetQueue;
     private final AtomicLong packetId;
     private final AtomicBoolean isBlock;
@@ -119,7 +141,10 @@ public class ParseTask extends WorkTask {
         RESULT_QUEUE.add(result);
     }
 
-    private void initStorage() {
+    /**
+     * Initialize SQL storage: database or file
+     */
+    protected void initStorage() {
         this.processPath = FileUtils.getJarPath() + File.separator + PROCESS_FILE_NAME;
         FileUtils.createFile(processPath);
         if (config.getOpengaussConfig() != null) {
@@ -133,6 +158,8 @@ public class ParseTask extends WorkTask {
 
     @Override
     public void start() {
+        readPreparseInfo(config.getPacketFilePath().endsWith(File.separator) ? config.getPacketFilePath()
+                : config.getPacketFilePath() + File.separator);
         threadPool.execute(this::readPcapFile);
         threadPool.execute(this::distributeData);
         threadPool.execute(this::mergeSql);
@@ -141,7 +168,37 @@ public class ParseTask extends WorkTask {
         }
     }
 
-    private void readPcapFile() {
+    private void readPreparseInfo(String packetFilePath) {
+        Path previousSessionPath = Paths.get(packetFilePath + "previous-session-mapping.json");
+        try (BufferedReader reader = Files.newBufferedReader(previousSessionPath, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                JSONObject jsonObj = JSON.parseObject(line);
+                SessionInfo sessionInfo = new SessionInfo(jsonObj.getString("session"),
+                        jsonObj.getString("username"), jsonObj.getString("schema"));
+                previousSessionMapping.put(sessionInfo.getSessionId(), sessionInfo);
+            }
+        } catch (IOException e) {
+            LOGGER.info("There has no previous session mapping file.");
+        }
+        Path sessionEndPacketPath = Paths.get(packetFilePath + "session-end-packet-mapping.json");
+        try (BufferedReader reader = Files.newBufferedReader(sessionEndPacketPath, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                JSONObject jsonObj = JSON.parseObject(line);
+                String sessionId = jsonObj.getString("session");
+                long endPacketId = jsonObj.getLong("endPacketId");
+                sessionEndPacketMapping.put(sessionId, endPacketId);
+            }
+        } catch (IOException e) {
+            LOGGER.info("There has no session to end packet file.");
+        }
+    }
+
+    /**
+     * Read pcap files
+     */
+    protected void readPcapFile() {
         Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         long startTimeMillis = System.currentTimeMillis();
         File dir = new File(config.getPacketFilePath());
@@ -260,7 +317,10 @@ public class ParseTask extends WorkTask {
         return name.matches(".*\\.pcap[0-9]+$") || name.endsWith(PCAP_SUFFIX);
     }
 
-    private void distributeData() {
+    /**
+     * Distribute packet data
+     */
+    protected void distributeData() {
         Thread.currentThread().setUncaughtExceptionHandler(new ThreadExceptionHandler());
         OriginPacket originPacket;
         byte[] packet;
@@ -321,14 +381,34 @@ public class ParseTask extends WorkTask {
         stop();
     }
 
-    private void distribute(PacketData packetData) {
+    /**
+     * Distribute
+     * @param packetData the packet data
+     */
+    protected void distribute(PacketData packetData) {
         String clientId = packetData.getClientId();
         if (THREAD_MAP.containsKey(clientId)) {
             THREAD_MAP.get(clientId).addDataToQueue(packetData);
+        } else if (previousSessionMapping.containsKey(clientId)) {
+            ParseThread parseThread = new ParseThread(clientId);
+            parseThread.addDataToQueue(packetData);
+            parseThread.setUsername(previousSessionMapping.get(clientId).getUsername());
+            parseThread.setSchema(previousSessionMapping.get(clientId).getSchema());
+            if (!sessionEndPacketMapping.isEmpty()) {
+                parseThread.setEndPacketId(sessionEndPacketMapping.get(clientId));
+                sessionEndPacketMapping.remove(clientId);
+            }
+            parseThread.start();
+            THREAD_MAP.put(clientId, parseThread);
+            previousSessionMapping.remove(clientId);
         } else {
             ParseThread parseThread = databaseTypeEnum.getSuitableProtocolParser(clientId);
             parseThread.addDataToQueue(packetData);
             parseThread.setFileConfig(config.getResultFileConfig());
+            if (!sessionEndPacketMapping.isEmpty()) {
+                parseThread.setEndPacketId(sessionEndPacketMapping.get(clientId));
+                sessionEndPacketMapping.remove(clientId);
+            }
             parseThread.start();
             THREAD_MAP.put(clientId, parseThread);
         }
@@ -570,7 +650,10 @@ public class ParseTask extends WorkTask {
         }
     }
 
-    private void stop() {
+    /**
+     * Stop parsing
+     */
+    protected void stop() {
         informSubThread();
         waitParseFinish();
         waitCommitSqlFinish();

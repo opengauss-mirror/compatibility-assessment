@@ -220,6 +220,27 @@ public class TranscribeConfig {
     }
 
     /**
+     * Get source database type
+     *
+     * @return String the source database type
+     */
+    public String getSourceDbType() {
+        return "mysql";
+    }
+
+    public String getSourceDbIp() {
+        return "x.x.x.x";
+    }
+
+    public String getSourceDbUsername() {
+        return "username";
+    }
+
+    public String getSourceDbPassword() {
+        return "******";
+    }
+
+    /**
      * Get sql batch of every query
      *
      * @return int the sql batch

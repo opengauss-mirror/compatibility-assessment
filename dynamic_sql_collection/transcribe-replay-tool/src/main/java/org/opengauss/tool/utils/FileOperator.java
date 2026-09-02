@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
@@ -66,6 +67,20 @@ public final class FileOperator {
      */
     public FileOperator(FileConfig config) {
         this.config = config;
+    }
+
+    /**
+     * Remove file if exists
+     *
+     * @param fileFullPath string the file full path
+     */
+    public static void removeIfExist(String fileFullPath) {
+        Path path = Paths.get(fileFullPath);
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            LOGGER.warn("Failed to delete file {}", fileFullPath);
+        }
     }
 
     /**
@@ -155,12 +170,31 @@ public final class FileOperator {
     }
 
     /**
+     * Write string to file
+     *
+     * @param strList the string list
+     * @param filePath the file full path
+     */
+    public static void writeStringToFile(List<String> strList, String filePath) {
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(filePath, true), StandardCharsets.UTF_8))) {
+            for (String content : strList) {
+                writer.write(content);
+                writer.newLine();
+            }
+        } catch (IOException exception) {
+            LOGGER.error("Error occurred during string writing to file, error message is: {}",
+                    exception.getMessage());
+        }
+    }
+
+    /**
      * write string to file
      *
      * @param sessionSet Set<SessionInfo> the sessionSet
      * @param filePath string the file path
      */
-    public void writeStringToFile(Set<SessionInfo> sessionSet, String filePath) {
+    public static void writeStringToFile(Set<SessionInfo> sessionSet, String filePath) {
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(new FileOutputStream(filePath, true), StandardCharsets.UTF_8))) {
             for (SessionInfo content : sessionSet) {

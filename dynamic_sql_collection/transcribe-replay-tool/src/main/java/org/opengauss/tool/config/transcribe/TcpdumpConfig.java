@@ -34,6 +34,10 @@ import java.util.Properties;
 public class TcpdumpConfig extends TranscribeConfig {
     private String networkInterface;
     private int capturePort;
+    private String sourceDbType;
+    private String sourceDbIp;
+    private String sourceDbUsername;
+    private String sourceDbPassword;
 
     @Override
     public void load(Properties props) {
@@ -45,6 +49,12 @@ public class TcpdumpConfig extends TranscribeConfig {
         this.captureDuration = Integer.parseInt(props.getProperty(ConfigReader.TCPDUMP_CAPTURE_DURATION, "1"));
         this.networkInterface = props.getProperty(ConfigReader.TCPDUMP_NETWORK_INTERFACE);
         this.capturePort = Integer.parseInt(props.getProperty(ConfigReader.TCPDUMP_DATABASE_PORT));
+        this.sourceDbPassword = props.getProperty(ConfigReader.TCPDUMP_DATABASE_PASSWORD, "******");
+        if (!"******".equals(sourceDbPassword)) {
+            this.sourceDbType = props.getProperty(ConfigReader.TCPDUMP_DATABASE_TYPE, "mysql");
+            this.sourceDbIp = props.getProperty(ConfigReader.TCPDUMP_DATABASE_IP);
+            this.sourceDbUsername = props.getProperty(ConfigReader.TCPDUMP_DATABASE_USERNAME);
+        }
         loadFileConfig(props);
     }
 

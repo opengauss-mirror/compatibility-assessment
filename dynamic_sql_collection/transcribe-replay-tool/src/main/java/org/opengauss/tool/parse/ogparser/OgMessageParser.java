@@ -69,6 +69,10 @@ public class OgMessageParser extends ParseThread {
             quit(packet);
             return true;
         }
+        if (packet.getPacketId() == endPacketId) {
+            isDistributeFinished.set(true);
+            return false;
+        }
         return false;
     }
 
