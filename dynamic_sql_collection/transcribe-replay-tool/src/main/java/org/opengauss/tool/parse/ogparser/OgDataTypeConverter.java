@@ -62,10 +62,11 @@ public final class OgDataTypeConverter {
         OID_TO_DATA_TYPE_MAP.put(88, "blob");
     }
 
-    private static final Map<String, ValueConverter> DATA_TYPE_CONVERTER_MAP = new HashMap<String, ValueConverter>() {
+    private static final Map<String, ValueConverter> DATA_TYPE_CONVERTER_MAP = new HashMap<>() {
         {
             put("int", OgDataTypeConverter::convertBinaryIntValue);
             put("double", OgDataTypeConverter::convertBinaryDoubleValue);
+            put("bytea", OgDataTypeConverter::convertByteaValue);
         }
     };
 
@@ -87,6 +88,12 @@ public final class OgDataTypeConverter {
         }
         long value = CommonParser.parseLongByBigEndian(data, start + INT_LENGTH, start + INT_LENGTH + len);
         return new PreparedValue("long", String.valueOf(value), INT_LENGTH + len);
+    }
+
+    private static PreparedValue convertByteaValue(byte[] data, int start) {
+        PreparedValue  preparedValue = convertStringValue(data, start);
+        preparedValue.setType("bytea");
+        return preparedValue;
     }
 
     private static PreparedValue convertStringValue(byte[] data, int start) {
